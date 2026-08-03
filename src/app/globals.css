@@ -1,26 +1,84 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Design tokens — extraits du prototype de référence
+ * (docs/Design de marketplace locale/Makinum.dc.html).
+ * Palette nommée sémantiquement : marque (vert), accent (ambre),
+ * neutres chauds (crème/beige) et teintes de statut.
+ */
+@theme {
+  /* Typographie */
+  --font-display: var(--font-bricolage), "Bricolage Grotesque", sans-serif;
+  --font-sans: var(--font-instrument), "Instrument Sans", system-ui, sans-serif;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  /* Vert marque — fonds héro/sidebar, boutons primaires */
+  --color-brand: #0f3d2e;
+  --color-brand-deep: #0b2c21; /* variante plus sombre (footer, contrastes forts) */
+  --color-brand-vivid: #16624a; /* vert vif — hover des éléments primaires */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Verts grisés — texte sur fond clair */
+  --color-brand-muted: #3e4e45; /* labels, texte de forte lisibilité */
+  --color-brand-subtle: #5c6b62; /* texte secondaire */
+  --color-brand-faint: #8a968e; /* texte discret / métadonnées */
+  --color-brand-placeholder: #9aa79f; /* placeholders */
+
+  /* Ambre accent — CTA, badges, mises en avant */
+  --color-accent: #e8a33d;
+  --color-accent-hover: #f2b354;
+  --color-accent-strong: #c77e1f; /* ambre foncé — texte sur teinte ambre */
+
+  /* Neutres chauds */
+  --color-cream: #f7f4ee; /* fond principal */
+  --color-cream-alt: #fbf9f4; /* fond alterné (en-têtes de tableau, bandeaux) */
+  --color-beige: #ede8de;
+  --color-beige-soft: #f1ede4;
+
+  /* Bordures */
+  --color-border: #e4ded2;
+  --color-border-strong: #d8d0c2;
+
+  /* Teintes de statut */
+  --color-tint-brand: #eaf2ed; /* vert clair — succès / vérifié */
+  --color-tint-brand-border: #cfe3d8;
+  --color-tint-accent: #fff3e0; /* ambre clair — confiance */
+  --color-tint-accent-border: #f0dfc0;
+  --color-tint-accent-soft: #fff8ec;
+  --color-tint-danger: #fdf4f2; /* rose — danger / suspension */
+  --color-tint-danger-border: #e2c9c4;
+  --color-danger: #a8544a;
+
+  /* Encre */
+  --color-ink: #10201a;
+
+  /* Rayons — coins bien arrondis, cohérents avec le prototype */
+  --radius-sm: 9px;
+  --radius-md: 11px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 20px;
+
+  /* Ombres douces */
+  --shadow-soft: 0 1px 2px rgba(16, 32, 26, 0.04), 0 8px 20px -14px rgba(15, 61, 46, 0.22);
+  --shadow-soft-lg: 0 16px 36px -18px rgba(15, 61, 46, 0.28);
+  --shadow-focus-brand: 0 0 0 3px rgba(15, 61, 46, 0.16);
+  --shadow-focus-accent: 0 0 0 3px rgba(232, 163, 61, 0.3);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::placeholder {
+  color: var(--color-brand-placeholder);
+}
+
+a {
+  color: var(--color-brand);
+}
+
+a:hover {
+  color: var(--color-accent-strong);
 }

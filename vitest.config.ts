@@ -8,5 +8,9 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
+    // Machine partagée avec les suites e2e backend : le défaut de 5 s
+    // fait échouer des rendus triviaux sous contention CPU.
+    testTimeout: 20_000,
+    hookTimeout: 20_000,
   },
 });
