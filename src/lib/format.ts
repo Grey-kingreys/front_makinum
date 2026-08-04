@@ -5,6 +5,11 @@
  */
 
 const gnfFormatter = new Intl.NumberFormat("fr-FR");
+const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
 
 /**
  * Formate un prix décimal exact (chaîne backend, ex. "185000") en
@@ -15,6 +20,13 @@ export function formatPrixGNF(prix: string): string {
   const value = Number(prix);
   if (!Number.isFinite(value)) return `${prix} GNF`;
   return `${gnfFormatter.format(value)} GNF`;
+}
+
+/** Date lisible (ex. "4 août 2026") à partir d'un ISO backend (dates des demandes d'achat, T16). */
+export function formatDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return dateFormatter.format(date);
 }
 
 /** Initiales d'affichage (avatar) à partir d'un nom complet — "Fatoumata Bangoura" → "FB". */

@@ -78,6 +78,7 @@ describe("AppShell", () => {
     window.localStorage.setItem("makinum.accessToken", "existing-token");
     const fetchMock = fetch as unknown as FetchMock;
     fetchMock.mockResolvedValueOnce(jsonResponse(DEMO_USER));
+    fetchMock.mockResolvedValueOnce(jsonResponse([])); // GET /demandes (DemandesProvider)
 
     renderShell();
 
@@ -85,7 +86,7 @@ describe("AppShell", () => {
     const activeLink = screen.getByRole("link", { name: "Produits proches" });
     expect(activeLink).toHaveAttribute("href", "/produits");
     expect(activeLink).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: /Ma demande/ })).toHaveAttribute("href", "/demande");
+    expect(screen.getByRole("link", { name: /Ma demande/ })).toHaveAttribute("href", "/demandes");
     expect(screen.getByText(DEMO_USER.nom)).toBeInTheDocument();
     expect(screen.getByText(DEMO_USER.telephone)).toBeInTheDocument();
     expect(replaceMock).not.toHaveBeenCalled();
@@ -95,6 +96,7 @@ describe("AppShell", () => {
     window.localStorage.setItem("makinum.accessToken", "existing-token");
     const fetchMock = fetch as unknown as FetchMock;
     fetchMock.mockResolvedValueOnce(jsonResponse(DEMO_USER));
+    fetchMock.mockResolvedValueOnce(jsonResponse([])); // GET /demandes (DemandesProvider)
 
     const user = userEvent.setup();
     renderShell();

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { useGeo } from "@/lib/geo";
 import { initialsFromName } from "@/lib/format";
+import { useDemandes } from "@/lib/purchase-requests";
 import type { PublicUser } from "@/lib/auth/types";
 
 import { SearchField } from "./SearchField";
@@ -15,11 +16,11 @@ import { SearchField } from "./SearchField";
  * Sidebar applicative — reproduit l'écran « isApp » du prototype
  * (docs/Design de marketplace locale/Makinum.dc.html) : logo, recherche,
  * section nav selon le rôle, pastille position, carte utilisateur, déconnexion.
- * ACHETEUR (T15) : « Produits proches » (actif) et « Ma demande » (route
- * /demande de T16, pas encore créée — le badge compteur n'affiche rien tant
- * que la source de données n'existe pas). VENDEUR (T17a) : « Mon catalogue »
- * (/vendeur/catalogue) et « Demandes reçues » — lien inerte marqué « bientôt »
- * tant que T17b (qui dépend de l'API T9) n'est pas livrée.
+ * ACHETEUR : « Produits proches » (actif) et « Ma demande » (/demandes, T16)
+ * — badge = nombre de brouillons EN_COURS (DemandesProvider), masqué à 0.
+ * VENDEUR (T17a) : « Mon catalogue » (/vendeur/catalogue) et « Demandes
+ * reçues » — lien inerte marqué « bientôt » tant que T17b (qui dépend de
+ * l'API T9) n'est pas livrée.
  */
 
 const ROLE_LABELS: Record<PublicUser["role"], string> = {
@@ -30,7 +31,7 @@ const ROLE_LABELS: Record<PublicUser["role"], string> = {
 
 const ACHETEUR_LINKS = [
   { href: "/produits", label: "Produits proches" },
-  { href: "/demande", label: "Ma demande" },
+  { href: "/demandes", label: "Ma demande" },
 ] as const;
 
 const VENDEUR_LINKS = [{ href: "/vendeur/catalogue", label: "Mon catalogue" }] as const;
@@ -43,6 +44,7 @@ interface SidebarProps {
 export function Sidebar({ user, onLogout }: SidebarProps) {
   const pathname = usePathname();
   const { status: geoStatus } = useGeo();
+  const { draftCount } = useDemandes();
   const [mobileOpen, setMobileOpen] = useState(false);
   const isVendeur = user.role === "VENDEUR";
   const navLinks = isVendeur ? VENDEUR_LINKS : ACHETEUR_LINKS;
@@ -114,6 +116,11 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                   )}
                 />
                 <span className="flex-1">{link.label}</span>
+                {link.href === "/demandes" && draftCount > 0 ? (
+                  <span className="rounded-full bg-accent px-[8px] py-[2px] text-[11px] font-semibold text-brand">
+                    {draftCount}
+                  </span>
+                ) : null}
               </Link>
             );
           })}

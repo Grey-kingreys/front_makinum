@@ -1,20 +1,27 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GeoProvider } from "@/lib/geo";
+import { DemandesProvider } from "@/lib/purchase-requests";
 import type { PublicUser } from "@/lib/auth/types";
+import type { PurchaseRequestView } from "@/lib/purchase-requests/types";
 
 import { Sidebar } from "./Sidebar";
 
-const { usePathnameMock, pushMock } = vi.hoisted(() => ({
+const { usePathnameMock, pushMock, listPurchaseRequestsMock } = vi.hoisted(() => ({
   usePathnameMock: vi.fn(() => "/vendeur/catalogue"),
   pushMock: vi.fn(),
+  listPurchaseRequestsMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   usePathname: usePathnameMock,
   // Sidebar renders <SearchField>, which also calls useRouter().
   useRouter: () => ({ push: pushMock }),
+}));
+
+vi.mock("@/lib/purchase-requests/api", () => ({
+  listPurchaseRequests: listPurchaseRequestsMock,
 }));
 
 function makeUser(overrides: Partial<PublicUser> = {}): PublicUser {
@@ -34,33 +41,55 @@ function makeUser(overrides: Partial<PublicUser> = {}): PublicUser {
   };
 }
 
-function renderSidebar(user: PublicUser) {
-  return render(
+function makeDemande(overrides: Partial<PurchaseRequestView> = {}): PurchaseRequestView {
+  return {
+    id: "d1",
+    statut: "EN_COURS",
+    resultat: null,
+    acheteurId: "u1",
+    vendeurId: "v1",
+    dateCreation: "2026-08-01T00:00:00.000Z",
+    dateMiseAJour: "2026-08-01T00:00:00.000Z",
+    items: [],
+    interlocuteur: { id: "v1", nom: "Fatoumata", statutVendeur: "VERIFIE" },
+    ...overrides,
+  };
+}
+
+async function renderSidebar(user: PublicUser) {
+  const utils = render(
     <GeoProvider>
-      <Sidebar user={user} onLogout={vi.fn()} />
+      <DemandesProvider>
+        <Sidebar user={user} onLogout={vi.fn()} />
+      </DemandesProvider>
     </GeoProvider>,
   );
+  // Laisse le fetch initial de DemandesProvider se résoudre.
+  await waitFor(() => expect(listPurchaseRequestsMock).toHaveBeenCalled());
+  return utils;
 }
 
 describe("Sidebar", () => {
   beforeEach(() => {
     window.sessionStorage.clear();
+    listPurchaseRequestsMock.mockReset();
+    listPurchaseRequestsMock.mockResolvedValue([]);
   });
 
-  it("shows the ACHETEUR nav (Produits proches, Ma demande) for a buyer", () => {
-    renderSidebar(makeUser({ role: "ACHETEUR" }));
+  it("shows the ACHETEUR nav (Produits proches, Ma demande) for a buyer", async () => {
+    await renderSidebar(makeUser({ role: "ACHETEUR" }));
 
     expect(screen.getByRole("link", { name: "Produits proches" })).toHaveAttribute(
       "href",
       "/produits",
     );
-    expect(screen.getByRole("link", { name: /Ma demande/ })).toHaveAttribute("href", "/demande");
+    expect(screen.getByRole("link", { name: /Ma demande/ })).toHaveAttribute("href", "/demandes");
     expect(screen.queryByText("Mon catalogue")).not.toBeInTheDocument();
     expect(screen.queryByText("Demandes reçues")).not.toBeInTheDocument();
   });
 
-  it("shows the VENDEUR nav (Mon catalogue + Demandes reçues inert « bientôt ») for a seller", () => {
-    renderSidebar(makeUser({ role: "VENDEUR" }));
+  it("shows the VENDEUR nav (Mon catalogue + Demandes reçues inert « bientôt ») for a seller", async () => {
+    await renderSidebar(makeUser({ role: "VENDEUR" }));
 
     const catalogueLink = screen.getByRole("link", { name: "Mon catalogue" });
     expect(catalogueLink).toHaveAttribute("href", "/vendeur/catalogue");
@@ -74,5 +103,25 @@ describe("Sidebar", () => {
     expect(screen.getByText("bientôt")).toBeInTheDocument();
     // Not a link : no navigation is wired yet (T17b).
     expect(screen.queryByRole("link", { name: /Demandes reçues/ })).not.toBeInTheDocument();
+  });
+
+  it("hides the badge on « Ma demande » when there are no EN_COURS drafts", async () => {
+    listPurchaseRequestsMock.mockResolvedValue([makeDemande({ id: "d1", statut: "ENVOYEE" })]);
+    await renderSidebar(makeUser({ role: "ACHETEUR" }));
+
+    const link = await screen.findByRole("link", { name: /Ma demande/ });
+    expect(link.textContent).toBe("Ma demande");
+  });
+
+  it("shows the EN_COURS draft count as a badge on « Ma demande »", async () => {
+    listPurchaseRequestsMock.mockResolvedValue([
+      makeDemande({ id: "d1", statut: "EN_COURS" }),
+      makeDemande({ id: "d2", statut: "EN_COURS" }),
+      makeDemande({ id: "d3", statut: "ENVOYEE" }),
+    ]);
+    await renderSidebar(makeUser({ role: "ACHETEUR" }));
+
+    const link = await screen.findByRole("link", { name: /Ma demande/ });
+    expect(link).toHaveTextContent("2");
   });
 });

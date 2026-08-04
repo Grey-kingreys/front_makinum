@@ -1,10 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ApiError } from "@/lib/api";
 import { GeoProvider } from "@/lib/geo";
 import { formatPrixGNF } from "@/lib/format";
+import type { PublicUser } from "@/lib/auth/types";
 import type { ProductView } from "@/lib/products/types";
+import type { PurchaseRequestView } from "@/lib/purchase-requests/types";
 
 import { ProductDetail } from "./ProductDetail";
 
@@ -14,6 +17,44 @@ import { ProductDetail } from "./ProductDetail";
 function normalizeSpaces(value: string): string {
   return value.replace(/ /g, " ");
 }
+
+const { useAuthMock, createOrCompletePurchaseRequestMock, refreshDemandesMock } = vi.hoisted(() => ({
+  useAuthMock: vi.fn(),
+  createOrCompletePurchaseRequestMock: vi.fn(),
+  refreshDemandesMock: vi.fn(),
+}));
+
+vi.mock("@/lib/auth", () => ({ useAuth: useAuthMock }));
+
+vi.mock("@/lib/purchase-requests", async () => {
+  const actual =
+    await vi.importActual<typeof import("@/lib/purchase-requests")>("@/lib/purchase-requests");
+  return {
+    ...actual,
+    createOrCompletePurchaseRequest: createOrCompletePurchaseRequestMock,
+    useDemandes: () => ({
+      demandes: [],
+      loading: false,
+      error: null,
+      draftCount: 0,
+      refresh: refreshDemandesMock,
+    }),
+  };
+});
+
+const DEMO_USER: PublicUser = {
+  id: "u1",
+  nom: "Ibrahima Camara",
+  telephone: "+224622111111",
+  telephoneVerifie: true,
+  email: null,
+  emailVerifie: false,
+  role: "ACHETEUR",
+  statutVendeur: "LIBRE",
+  statutCompte: "ACTIF",
+  latitude: null,
+  longitude: null,
+};
 
 function makeProduct(overrides: Partial<ProductView> = {}): ProductView {
   return {
@@ -38,6 +79,21 @@ function makeProduct(overrides: Partial<ProductView> = {}): ProductView {
   };
 }
 
+function makeDemande(overrides: Partial<PurchaseRequestView> = {}): PurchaseRequestView {
+  return {
+    id: "d1",
+    statut: "EN_COURS",
+    resultat: null,
+    acheteurId: "u1",
+    vendeurId: "v1",
+    dateCreation: "2026-08-04T00:00:00.000Z",
+    dateMiseAJour: "2026-08-04T00:00:00.000Z",
+    items: [{ id: "item-1", produitId: "p1", quantite: 1, produit: { id: "p1", titre: "Pagne wax", prix: "185000", miniature: null } }],
+    interlocuteur: { id: "v1", nom: "Fatoumata Bangoura", statutVendeur: "VERIFIE" },
+    ...overrides,
+  };
+}
+
 function renderDetail(product: ProductView) {
   return render(
     <GeoProvider>
@@ -49,6 +105,10 @@ function renderDetail(product: ProductView) {
 describe("ProductDetail", () => {
   beforeEach(() => {
     window.sessionStorage.clear();
+    useAuthMock.mockReset();
+    useAuthMock.mockReturnValue({ user: DEMO_USER, loading: false, login: vi.fn(), logout: vi.fn(), refresh: vi.fn() });
+    createOrCompletePurchaseRequestMock.mockReset();
+    refreshDemandesMock.mockReset();
   });
 
   it("renders title, formatted price, description, category and vendor", () => {
@@ -78,13 +138,6 @@ describe("ProductDetail", () => {
 
     await user.click(thumb2);
     expect(thumb2).toHaveAttribute("aria-current", "true");
-  });
-
-  it("disables 'Ajouter à ma demande' with the 'Bientôt disponible' title", () => {
-    renderDetail(makeProduct());
-    const addButton = screen.getByRole("button", { name: "Ajouter à ma demande" });
-    expect(addButton).toBeDisabled();
-    expect(addButton).toHaveAttribute("title", "Bientôt disponible");
   });
 
   it("renders no contact buttons when vendeur.telephone is absent", () => {
@@ -130,5 +183,60 @@ describe("ProductDetail", () => {
     });
     renderDetail(product);
     expect(screen.getByText("★ 4.6 (23)")).toBeInTheDocument();
+  });
+
+  describe("« Ajouter à ma demande »", () => {
+    it("renders a link to /connexion instead of the API call when logged out", () => {
+      useAuthMock.mockReturnValue({ user: null, loading: false, login: vi.fn(), logout: vi.fn(), refresh: vi.fn() });
+      renderDetail(makeProduct());
+
+      const addLink = screen.getByRole("link", { name: "Ajouter à ma demande" });
+      expect(addLink).toHaveAttribute("href", "/connexion");
+      expect(createOrCompletePurchaseRequestMock).not.toHaveBeenCalled();
+      // No quantity selector while logged out.
+      expect(screen.queryByRole("button", { name: "Augmenter la quantité" })).not.toBeInTheDocument();
+    });
+
+    it("POSTs { produitId, quantite: 1 } by default and shows a success link to the request", async () => {
+      const user = userEvent.setup();
+      createOrCompletePurchaseRequestMock.mockResolvedValueOnce(makeDemande({ id: "d1" }));
+      renderDetail(makeProduct({ id: "p1" }));
+
+      await user.click(screen.getByRole("button", { name: "Ajouter à ma demande" }));
+
+      await waitFor(() =>
+        expect(createOrCompletePurchaseRequestMock).toHaveBeenCalledWith({ produitId: "p1", quantite: 1 }),
+      );
+      expect(await screen.findByText("Ajouté à ta demande.")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Voir ma demande" })).toHaveAttribute("href", "/demandes/d1");
+      expect(refreshDemandesMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("lets the buyer increase the quantity before adding", async () => {
+      const user = userEvent.setup();
+      createOrCompletePurchaseRequestMock.mockResolvedValueOnce(makeDemande({ id: "d1" }));
+      renderDetail(makeProduct({ id: "p1" }));
+
+      await user.click(screen.getByRole("button", { name: "Augmenter la quantité" }));
+      await user.click(screen.getByRole("button", { name: "Augmenter la quantité" }));
+      await user.click(screen.getByRole("button", { name: "Ajouter à ma demande" }));
+
+      await waitFor(() =>
+        expect(createOrCompletePurchaseRequestMock).toHaveBeenCalledWith({ produitId: "p1", quantite: 3 }),
+      );
+    });
+
+    it("shows a clear message for CANNOT_BUY_OWN_PRODUCT", async () => {
+      const user = userEvent.setup();
+      createOrCompletePurchaseRequestMock.mockRejectedValueOnce(
+        new ApiError(400, "Impossible d’acheter son propre produit", "CANNOT_BUY_OWN_PRODUCT"),
+      );
+      renderDetail(makeProduct());
+
+      await user.click(screen.getByRole("button", { name: "Ajouter à ma demande" }));
+
+      expect(await screen.findByText("Impossible d'acheter ton propre produit.")).toBeInTheDocument();
+      expect(screen.queryByText("Ajouté à ta demande.")).not.toBeInTheDocument();
+    });
   });
 });

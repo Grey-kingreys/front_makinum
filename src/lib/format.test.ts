@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatPrixGNF, initialsFromName } from "./format";
+import { formatDate, formatPrixGNF, initialsFromName } from "./format";
 
 describe("formatPrixGNF", () => {
   it("formats a plain integer string with fr-FR grouping and the GNF suffix", () => {
@@ -27,5 +27,15 @@ describe("initialsFromName", () => {
 
   it("returns a placeholder for an empty name", () => {
     expect(initialsFromName("   ")).toBe("?");
+  });
+});
+
+describe("formatDate", () => {
+  it("formats an ISO date in long fr-FR form", () => {
+    expect(formatDate("2026-08-04T10:00:00.000Z")).toBe("4 août 2026");
+  });
+
+  it("falls back to the raw value when the date is invalid", () => {
+    expect(formatDate("not-a-date")).toBe("not-a-date");
   });
 });

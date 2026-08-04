@@ -3,23 +3,43 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import { Alert } from "@/components/ui";
 import { PhotoPlaceholder } from "@/components/products/PhotoPlaceholder";
 import { VendeurBadge } from "@/components/products/VendeurBadge";
+import { ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { formatPrixGNF, initialsFromName } from "@/lib/format";
 import { haversineDistanceKm, roundDistanceKm, useGeo } from "@/lib/geo";
+import {
+  createOrCompletePurchaseRequest,
+  describeDemandeError,
+  useDemandes,
+} from "@/lib/purchase-requests";
 import type { ProductView } from "@/lib/products/types";
+
+const ADD_BUTTON_CLASSES =
+  "mb-2.5 block w-full cursor-pointer rounded-xl bg-brand px-5 py-4 text-center text-[15.5px] font-semibold text-cream transition-colors hover:bg-brand-vivid disabled:cursor-not-allowed disabled:opacity-60";
 
 /**
  * Fiche produit (/produits/[id]) — écran isProduct du prototype : galerie,
- * description, carte vendeur, actions (« Ajouter à ma demande » — désactivé,
- * T16 le branchera — et Appeler/WhatsApp, conditionnels à un futur champ
- * `vendeur.telephone` que l'API n'expose pas encore).
+ * description, carte vendeur, actions. « Ajouter à ma demande » (T16) :
+ * sélecteur de quantité (1 par défaut) puis POST /demandes — le backend
+ * fusionne silencieusement dans le brouillon existant du vendeur s'il y en a
+ * déjà un pour ce couple acheteur↔vendeur. Non connecté : le bouton renvoie
+ * vers /connexion plutôt que de tenter l'appel API.
  */
 export function ProductDetail({ product }: { product: ProductView }) {
   const { position } = useGeo();
+  const { user } = useAuth();
+  const { refresh: refreshDemandes } = useDemandes();
   const photos = [...product.photos].sort((a, b) => a.ordre - b.ordre);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const selectedPhoto = photos[selectedIndex] ?? null;
+
+  const [quantite, setQuantite] = useState(1);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addedDemandeId, setAddedDemandeId] = useState<string | null>(null);
 
   const distanceKm =
     position && product.latitude !== null && product.longitude !== null
@@ -30,6 +50,22 @@ export function ProductDetail({ product }: { product: ProductView }) {
 
   const telephone = product.vendeur.telephone;
   const whatsappNumber = telephone ? telephone.replace(/\D/g, "") : null;
+
+  async function handleAdd() {
+    setAdding(true);
+    setAddError(null);
+    try {
+      const demande = await createOrCompletePurchaseRequest({ produitId: product.id, quantite });
+      setAddedDemandeId(demande.id);
+      await refreshDemandes();
+    } catch (err) {
+      setAddError(
+        describeDemandeError(err, err instanceof ApiError ? err.message : "Ajout impossible. Réessaie."),
+      );
+    } finally {
+      setAdding(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-[1280px] px-6 pb-[60px] pt-[26px] sm:px-8 lg:px-10">
@@ -118,14 +154,71 @@ export function ProductDetail({ product }: { product: ProductView }) {
                 </div>
               </div>
 
-              <button
-                type="button"
-                disabled
-                title="Bientôt disponible"
-                className="mb-2.5 w-full cursor-not-allowed rounded-xl bg-brand px-5 py-4 text-[15.5px] font-semibold text-cream opacity-60"
-              >
-                Ajouter à ma demande
-              </button>
+              {addedDemandeId ? (
+                <div className="mb-2.5 rounded-xl border border-tint-brand-border bg-tint-brand px-4 py-3.5">
+                  <p className="mb-1.5 text-[13.5px] font-medium text-brand-vivid">
+                    Ajouté à ta demande.
+                  </p>
+                  <Link
+                    href={`/demandes/${addedDemandeId}`}
+                    className="text-[13.5px] font-medium text-brand-vivid underline"
+                  >
+                    Voir ma demande
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  {user ? (
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-[13.5px] text-ink">Quantité</span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setQuantite((value) => Math.max(1, value - 1))}
+                          disabled={quantite <= 1}
+                          aria-label="Diminuer la quantité"
+                          className="grid h-8 w-8 place-items-center rounded-full border border-border-strong text-[15px] text-ink transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          −
+                        </button>
+                        <span className="w-6 text-center text-[15px] font-medium" aria-live="polite">
+                          {quantite}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setQuantite((value) => value + 1)}
+                          aria-label="Augmenter la quantité"
+                          className="grid h-8 w-8 place-items-center rounded-full border border-border-strong text-[15px] text-ink transition-colors hover:border-brand"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {addError ? (
+                    <Alert variant="danger" className="mb-2.5">
+                      {addError}
+                    </Alert>
+                  ) : null}
+
+                  {user ? (
+                    <button
+                      type="button"
+                      onClick={handleAdd}
+                      disabled={adding}
+                      aria-busy={adding}
+                      className={ADD_BUTTON_CLASSES}
+                    >
+                      {adding ? "Ajout…" : "Ajouter à ma demande"}
+                    </button>
+                  ) : (
+                    <Link href="/connexion" className={ADD_BUTTON_CLASSES}>
+                      Ajouter à ma demande
+                    </Link>
+                  )}
+                </>
+              )}
 
               {telephone ? (
                 <div className="grid grid-cols-2 gap-2.5">

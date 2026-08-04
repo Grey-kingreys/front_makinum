@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/lib/auth";
 import { GeoProvider } from "@/lib/geo";
+import { DemandesProvider } from "@/lib/purchase-requests";
 
 import { Sidebar } from "./Sidebar";
 
@@ -12,8 +13,10 @@ import { Sidebar } from "./Sidebar";
  * Coquille du groupe de routes (app) : protège /produits et consorts
  * derrière une session active (AuthProvider) — sans utilisateur chargé,
  * redirection vers /connexion — puis rend la sidebar + le contenu de page.
- * `GeoProvider` est monté ici (au-dessus de la sidebar ET du contenu) pour
- * que la position acquise sur une page acheteur soit visible partout.
+ * `GeoProvider` et `DemandesProvider` sont montés ici (au-dessus de la
+ * sidebar ET du contenu) pour que la position acquise et le compteur de
+ * demandes en cours (badge sidebar, T16) soient visibles partout, une seule
+ * fois la session confirmée active.
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -38,10 +41,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <GeoProvider>
-      <div className="flex min-h-screen flex-col md:flex-row">
-        <Sidebar user={user} onLogout={handleLogout} />
-        <main className="min-w-0 flex-1 bg-cream">{children}</main>
-      </div>
+      <DemandesProvider>
+        <div className="flex min-h-screen flex-col md:flex-row">
+          <Sidebar user={user} onLogout={handleLogout} />
+          <main className="min-w-0 flex-1 bg-cream">{children}</main>
+        </div>
+      </DemandesProvider>
     </GeoProvider>
   );
 }
