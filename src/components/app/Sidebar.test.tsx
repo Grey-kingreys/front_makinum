@@ -124,6 +124,19 @@ describe("Sidebar", () => {
     expect(link.textContent).toBe("Ma demande");
   });
 
+  it("shows the ADMIN nav (File de modération, Vendeurs) for an admin", async () => {
+    await renderSidebar(makeUser({ role: "ADMIN" }));
+
+    expect(screen.getByRole("link", { name: "File de modération" })).toHaveAttribute(
+      "href",
+      "/admin/moderation",
+    );
+    expect(screen.getByRole("link", { name: "Vendeurs" })).toHaveAttribute("href", "/admin/vendeurs");
+    expect(screen.queryByText("Mon catalogue")).not.toBeInTheDocument();
+    expect(screen.queryByText("Produits proches")).not.toBeInTheDocument();
+    expect(screen.queryByText("Demandes reçues")).not.toBeInTheDocument();
+  });
+
   it("shows the EN_COURS draft count as a badge on « Ma demande »", async () => {
     listPurchaseRequestsMock.mockResolvedValue([
       makeDemande({ id: "d1", statut: "EN_COURS" }),

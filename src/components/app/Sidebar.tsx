@@ -22,6 +22,8 @@ import { SearchField } from "./SearchField";
  * VENDEUR (T17a) : « Mon catalogue » (/vendeur/catalogue) et « Demandes
  * reçues » — lien inerte marqué « bientôt » tant que T17b (qui dépend de
  * l'API T9) n'est pas livrée.
+ * ADMIN : « File de modération » (/admin/moderation) et « Vendeurs »
+ * (/admin/vendeurs).
  * La cloche de notifications (NotificationBell, /notifications) est dans la
  * rangée d'en-tête, visible aussi bien repliée (barre mobile) que dépliée
  * (sidebar desktop).
@@ -40,6 +42,11 @@ const ACHETEUR_LINKS = [
 
 const VENDEUR_LINKS = [{ href: "/vendeur/catalogue", label: "Mon catalogue" }] as const;
 
+const ADMIN_LINKS = [
+  { href: "/admin/moderation", label: "File de modération" },
+  { href: "/admin/vendeurs", label: "Vendeurs" },
+] as const;
+
 interface SidebarProps {
   user: PublicUser;
   onLogout: () => void;
@@ -51,7 +58,8 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
   const { draftCount } = useDemandes();
   const [mobileOpen, setMobileOpen] = useState(false);
   const isVendeur = user.role === "VENDEUR";
-  const navLinks = isVendeur ? VENDEUR_LINKS : ACHETEUR_LINKS;
+  const isAdmin = user.role === "ADMIN";
+  const navLinks = isVendeur ? VENDEUR_LINKS : isAdmin ? ADMIN_LINKS : ACHETEUR_LINKS;
 
   return (
     <div className="shrink-0 bg-brand text-cream md:sticky md:top-0 md:flex md:h-screen md:w-[252px] md:flex-col md:self-start md:px-4 md:py-[22px]">
@@ -98,7 +106,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
         </div>
         <nav
           className="flex flex-col gap-1"
-          aria-label={isVendeur ? "Navigation vendeur" : "Navigation acheteur"}
+          aria-label={isVendeur ? "Navigation vendeur" : isAdmin ? "Navigation admin" : "Navigation acheteur"}
         >
           {navLinks.map((link) => {
             const active = pathname === link.href || pathname?.startsWith(`${link.href}/`);

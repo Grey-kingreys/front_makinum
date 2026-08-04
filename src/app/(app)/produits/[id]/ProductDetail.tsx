@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Alert } from "@/components/ui";
 import { PhotoPlaceholder } from "@/components/products/PhotoPlaceholder";
 import { VendeurBadge } from "@/components/products/VendeurBadge";
+import { ReportProductAction } from "@/components/reports/ReportProductAction";
 import { VendorReviewsSection } from "@/components/reviews/VendorReviewsSection";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -246,6 +247,10 @@ export function ProductDetail({ product }: { product: ProductView }) {
                 Ajouter n&apos;engage aucun paiement : le vendeur reçoit une notification et vous
                 convenez ensemble du reste.
               </p>
+            </div>
+
+            <div className="mt-3.5 text-center">
+              <ReportProductAction vendeurId={product.vendeurId} produitId={product.id} />
             </div>
           </div>
         </div>
