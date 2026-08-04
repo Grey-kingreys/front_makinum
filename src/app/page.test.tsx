@@ -3,25 +3,34 @@ import { describe, expect, it } from "vitest";
 
 import Page from "@/app/page";
 
-describe("Home page", () => {
-  it("renders the getting started heading", () => {
+describe("Landing page", () => {
+  it("renders the hero heading", () => {
     render(<Page />);
 
-    expect(
-      screen.getByRole("heading", {
-        level: 1,
-        name: "To get started, edit the page.tsx file.",
-      }),
-    ).toBeInTheDocument();
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent(/Ce qui se vend/);
+    expect(heading).toHaveTextContent(/près de chez toi/);
+    expect(heading).toHaveTextContent(/enfin visible\./);
   });
 
-  it("renders a link to the Next.js documentation", () => {
+  it("links Connexion to /connexion", () => {
     render(<Page />);
 
-    const docsLink = screen.getByRole("link", { name: "Documentation" });
-    expect(docsLink).toHaveAttribute(
-      "href",
-      "https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app",
-    );
+    expect(screen.getByRole("link", { name: "Connexion" })).toHaveAttribute("href", "/connexion");
+  });
+
+  it("links the signup and become-a-seller CTAs to /inscription", () => {
+    render(<Page />);
+
+    expect(screen.getByRole("link", { name: "Créer un compte" })).toHaveAttribute("href", "/inscription");
+    expect(screen.getByRole("link", { name: "Je veux vendre" })).toHaveAttribute("href", "/inscription");
+    expect(screen.getByRole("link", { name: "Devenir vendeur" })).toHaveAttribute("href", "/inscription");
+  });
+
+  it("links the footer legal notices to /cgu and /confidentialite", () => {
+    render(<Page />);
+
+    expect(screen.getByRole("link", { name: "CGU" })).toHaveAttribute("href", "/cgu");
+    expect(screen.getByRole("link", { name: "Confidentialité" })).toHaveAttribute("href", "/confidentialite");
   });
 });
