@@ -67,9 +67,9 @@ export default function Home() {
               </p>
 
               <div className="mb-11 flex flex-col gap-3 sm:flex-row">
-                <a href="#ce-qui-se-vend" className={ACCENT_BUTTON}>
+                <Link href="/produits" className={ACCENT_BUTTON}>
                   Voir les produits près de moi
-                </a>
+                </Link>
                 <Link href="/inscription" className={OUTLINE_HERO_BUTTON}>
                   Je veux vendre
                 </Link>
