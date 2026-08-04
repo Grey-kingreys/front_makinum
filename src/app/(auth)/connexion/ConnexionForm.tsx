@@ -137,14 +137,14 @@ export function ConnexionForm() {
       </form>
 
       <p className="mt-4 text-right text-[13px]">
-        <Link href="/recuperation" className="text-brand-subtle underline">
+        <Link href="/recuperation" className="text-brand-subtle underline hover:text-brand-vivid">
           Mot de passe oublié ?
         </Link>
       </p>
 
       <p className="mt-6 text-center text-[13.5px] text-brand-subtle">
         Pas de compte ?{" "}
-        <Link href="/inscription" className="text-brand underline">
+        <Link href="/inscription" className="text-brand underline hover:text-accent-strong">
           Créer un compte
         </Link>
       </p>

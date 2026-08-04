@@ -64,21 +64,23 @@
   --shadow-focus-accent: 0 0 0 3px rgba(232, 163, 61, 0.3);
 }
 
-body {
-  background: var(--color-cream);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-}
+@layer base {
+  body {
+    background: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
 
-::placeholder {
-  color: var(--color-brand-placeholder);
-}
+  ::placeholder {
+    color: var(--color-brand-placeholder);
+  }
 
-a {
-  color: var(--color-brand);
-}
+  a {
+    color: var(--color-brand);
+  }
 
-a:hover {
-  color: var(--color-accent-strong);
+  a:hover {
+    color: var(--color-accent-strong);
+  }
 }

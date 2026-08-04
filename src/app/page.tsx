@@ -11,19 +11,12 @@ import { LandingHeader } from "@/components/landing/LandingHeader";
  * puis une section catégories (« Ce qui se vend ») et le footer. Server
  * Component statique : aucun fetch, contenu figé (le listing dynamique de
  * produits/catégories arrive en T15).
- *
- * Note couleur des liens : `globals.css` définit `a`/`a:hover` hors de tout
- * `@layer` Tailwind, ce qui leur donne la priorité sur les classes
- * utilitaires `text-*`/`hover:text-*` posées sur un `<a>`/`<Link>` (une
- * déclaration non calquée l'emporte sur une déclaration calquée à poids
- * égal). D'où le modificateur `!important` (suffixe `!`) sur la couleur de
- * texte des liens ci-dessous — cf. la même remarque dans LandingHeader.
  */
 
 const ACCENT_BUTTON =
-  "inline-flex items-center justify-center rounded-lg bg-accent px-7 py-4 text-[15.5px] font-semibold text-brand! transition-colors hover:bg-accent-hover";
+  "inline-flex items-center justify-center rounded-lg bg-accent px-7 py-4 text-[15.5px] font-semibold text-brand transition-colors hover:bg-accent-hover";
 const OUTLINE_HERO_BUTTON =
-  "inline-flex items-center justify-center rounded-lg border border-cream/28 px-[26px] py-4 text-[15.5px] text-cream! transition-colors hover:border-cream";
+  "inline-flex items-center justify-center rounded-lg border border-cream/28 px-[26px] py-4 text-[15.5px] text-cream transition-colors hover:border-cream";
 
 const STATS = [
   { value: "0 GNF", label: "de commission" },
@@ -203,10 +196,10 @@ export default function Home() {
         <div className="mx-auto flex max-w-[1240px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p>Makinum — plateforme de mise en relation. Facilitatrice, jamais intermédiaire financier.</p>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <Link href="/cgu" className="text-cream/55! transition-colors hover:text-cream!">
+            <Link href="/cgu" className="text-cream/55 transition-colors hover:text-cream">
               CGU
             </Link>
-            <Link href="/confidentialite" className="text-cream/55! transition-colors hover:text-cream!">
+            <Link href="/confidentialite" className="text-cream/55 transition-colors hover:text-cream">
               Confidentialité
             </Link>
             <span>Conakry, Guinée · V1 MVP</span>

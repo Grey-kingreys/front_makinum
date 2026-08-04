@@ -164,7 +164,7 @@ export function InscriptionForm() {
 
       <p className="mt-6 text-center text-[13.5px] text-brand-subtle">
         Déjà un compte ?{" "}
-        <Link href="/connexion" className="text-brand underline">
+        <Link href="/connexion" className="text-brand underline hover:text-accent-strong">
           Se connecter
         </Link>
       </p>

@@ -13,7 +13,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="grid min-h-screen md:grid-cols-2">
       <div className="hidden flex-col justify-between bg-brand px-10 py-12 text-cream md:flex lg:px-14 lg:py-14">
-        <Link href="/" className="flex w-fit items-center gap-3">
+        <Link href="/" className="flex w-fit items-center gap-3 text-cream">
           <span className="grid h-[30px] w-[30px] place-items-center rounded-md bg-accent font-display text-[17px] font-extrabold text-brand">
             M
           </span>
