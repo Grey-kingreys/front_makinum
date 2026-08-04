@@ -2,16 +2,18 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GeoProvider } from "@/lib/geo";
+import { NotificationsProvider } from "@/lib/notifications";
 import { DemandesProvider } from "@/lib/purchase-requests";
 import type { PublicUser } from "@/lib/auth/types";
 import type { PurchaseRequestView } from "@/lib/purchase-requests/types";
 
 import { Sidebar } from "./Sidebar";
 
-const { usePathnameMock, pushMock, listPurchaseRequestsMock } = vi.hoisted(() => ({
+const { usePathnameMock, pushMock, listPurchaseRequestsMock, listNotificationsMock } = vi.hoisted(() => ({
   usePathnameMock: vi.fn(() => "/vendeur/catalogue"),
   pushMock: vi.fn(),
   listPurchaseRequestsMock: vi.fn(),
+  listNotificationsMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -22,6 +24,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/purchase-requests/api", () => ({
   listPurchaseRequests: listPurchaseRequestsMock,
+}));
+
+vi.mock("@/lib/notifications/api", () => ({
+  listNotifications: listNotificationsMock,
 }));
 
 function makeUser(overrides: Partial<PublicUser> = {}): PublicUser {
@@ -60,12 +66,15 @@ async function renderSidebar(user: PublicUser) {
   const utils = render(
     <GeoProvider>
       <DemandesProvider>
-        <Sidebar user={user} onLogout={vi.fn()} />
+        <NotificationsProvider>
+          <Sidebar user={user} onLogout={vi.fn()} />
+        </NotificationsProvider>
       </DemandesProvider>
     </GeoProvider>,
   );
-  // Laisse le fetch initial de DemandesProvider se résoudre.
+  // Laisse les fetchs initiaux de DemandesProvider/NotificationsProvider se résoudre.
   await waitFor(() => expect(listPurchaseRequestsMock).toHaveBeenCalled());
+  await waitFor(() => expect(listNotificationsMock).toHaveBeenCalled());
   return utils;
 }
 
@@ -74,6 +83,8 @@ describe("Sidebar", () => {
     window.sessionStorage.clear();
     listPurchaseRequestsMock.mockReset();
     listPurchaseRequestsMock.mockResolvedValue([]);
+    listNotificationsMock.mockReset();
+    listNotificationsMock.mockResolvedValue({ items: [], total: 0, nbNonLues: 0 });
   });
 
   it("shows the ACHETEUR nav (Produits proches, Ma demande) for a buyer", async () => {

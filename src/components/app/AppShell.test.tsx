@@ -9,15 +9,24 @@ import { AppShell } from "./AppShell";
 
 type FetchMock = ReturnType<typeof vi.fn>;
 
-const { replaceMock, pushMock, usePathnameMock } = vi.hoisted(() => ({
+const { replaceMock, pushMock, usePathnameMock, listNotificationsMock } = vi.hoisted(() => ({
   replaceMock: vi.fn(),
   pushMock: vi.fn(),
   usePathnameMock: vi.fn(() => "/produits"),
+  listNotificationsMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: replaceMock, push: pushMock }),
   usePathname: usePathnameMock,
+}));
+
+// NotificationsProvider (cloche sidebar) mocké au niveau module plutôt que
+// via le fetch global : évite toute dépendance à l'ordre d'exécution des
+// effets entre DemandesProvider et NotificationsProvider (tous deux montés
+// dans le même commit une fois la session restaurée).
+vi.mock("@/lib/notifications/api", () => ({
+  listNotifications: listNotificationsMock,
 }));
 
 function jsonResponse(body: unknown, init: { ok?: boolean; status?: number } = {}): Response {
@@ -61,6 +70,8 @@ describe("AppShell", () => {
     replaceMock.mockClear();
     pushMock.mockClear();
     usePathnameMock.mockReturnValue("/produits");
+    listNotificationsMock.mockReset();
+    listNotificationsMock.mockResolvedValue({ items: [], total: 0, nbNonLues: 0 });
   });
 
   afterEach(() => {

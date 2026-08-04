@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Badge, type BadgeVariant } from "@/components/ui";
 import { PhotoPlaceholder } from "@/components/products/PhotoPlaceholder";
 import { VendeurBadge } from "@/components/products/VendeurBadge";
+import { ReviewForm } from "@/components/reviews/ReviewForm";
 import { formatDate, formatPrixGNF, initialsFromName } from "@/lib/format";
 import {
   addPurchaseRequestItem,
@@ -17,6 +18,7 @@ import {
   type PurchaseRequestView,
   type StatutDemande,
 } from "@/lib/purchase-requests";
+import type { ReviewView } from "@/lib/reviews";
 
 const STATUT_LABEL: Record<StatutDemande, string> = {
   EN_COURS: "Brouillon",
@@ -68,6 +70,10 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
   const [sendError, setSendError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [submittedReview, setSubmittedReview] = useState<ReviewView | null>(null);
+  const [reviewAlreadyExists, setReviewAlreadyExists] = useState(false);
 
   const isBrouillon = demande.statut === "EN_COURS";
   const isEnvoyee = demande.statut === "ENVOYEE";
@@ -262,18 +268,42 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
       ) : null}
 
       {isCloturee ? (
-        <div className="flex items-center justify-between gap-2 border-t border-beige px-5 py-4">
-          <span
-            aria-disabled="true"
-            title="Bientôt disponible"
-            className="cursor-not-allowed text-[13.5px] text-brand-faint"
-          >
-            Laisser un avis
-          </span>
-          <span className="rounded-full bg-beige-soft px-2 py-0.5 text-[11px] text-brand-subtle">
-            bientôt
-          </span>
-        </div>
+        submittedReview ? (
+          <div className="flex items-center gap-2 border-t border-beige px-5 py-4">
+            <span className="text-[13.5px] font-medium text-brand-vivid">
+              Avis envoyé ★{submittedReview.note}
+            </span>
+          </div>
+        ) : reviewAlreadyExists ? (
+          <div className="border-t border-beige px-5 py-4">
+            <span className="text-[13.5px] text-brand-subtle">
+              Tu as déjà laissé un avis pour cette demande.
+            </span>
+          </div>
+        ) : reviewOpen ? (
+          <ReviewForm
+            purchaseRequestId={demande.id}
+            onSubmitted={(review) => {
+              setSubmittedReview(review);
+              setReviewOpen(false);
+            }}
+            onAlreadyExists={() => {
+              setReviewAlreadyExists(true);
+              setReviewOpen(false);
+            }}
+            onCancel={() => setReviewOpen(false)}
+          />
+        ) : (
+          <div className="border-t border-beige px-5 py-4">
+            <button
+              type="button"
+              onClick={() => setReviewOpen(true)}
+              className="text-[13.5px] font-medium text-brand underline"
+            >
+              Laisser un avis
+            </button>
+          </div>
+        )
       ) : null}
     </div>
   );

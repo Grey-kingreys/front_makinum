@@ -10,6 +10,7 @@ import { initialsFromName } from "@/lib/format";
 import { useDemandes } from "@/lib/purchase-requests";
 import type { PublicUser } from "@/lib/auth/types";
 
+import { NotificationBell } from "./NotificationBell";
 import { SearchField } from "./SearchField";
 
 /**
@@ -21,6 +22,9 @@ import { SearchField } from "./SearchField";
  * VENDEUR (T17a) : « Mon catalogue » (/vendeur/catalogue) et « Demandes
  * reçues » — lien inerte marqué « bientôt » tant que T17b (qui dépend de
  * l'API T9) n'est pas livrée.
+ * La cloche de notifications (NotificationBell, /notifications) est dans la
+ * rangée d'en-tête, visible aussi bien repliée (barre mobile) que dépliée
+ * (sidebar desktop).
  */
 
 const ROLE_LABELS: Record<PublicUser["role"], string> = {
@@ -58,26 +62,29 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
           </span>
           <span className="font-display text-[19px] font-bold tracking-tight">Makinum</span>
         </Link>
-        <button
-          type="button"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-cream/30 text-cream md:hidden"
-          aria-expanded={mobileOpen}
-          aria-controls="app-mobile-nav"
-          onClick={() => setMobileOpen((value) => !value)}
-        >
-          <span className="sr-only">Menu</span>
-          <svg
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            className="h-5 w-5"
-            aria-hidden="true"
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <button
+            type="button"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-cream/30 text-cream md:hidden"
+            aria-expanded={mobileOpen}
+            aria-controls="app-mobile-nav"
+            onClick={() => setMobileOpen((value) => !value)}
           >
-            {mobileOpen ? <path d="M5 5l10 10M15 5L5 15" /> : <path d="M3 6h14M3 10h14M3 14h14" />}
-          </svg>
-        </button>
+            <span className="sr-only">Menu</span>
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              className="h-5 w-5"
+              aria-hidden="true"
+            >
+              {mobileOpen ? <path d="M5 5l10 10M15 5L5 15" /> : <path d="M3 6h14M3 10h14M3 14h14" />}
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div

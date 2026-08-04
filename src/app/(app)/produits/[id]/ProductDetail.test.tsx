@@ -18,13 +18,17 @@ function normalizeSpaces(value: string): string {
   return value.replace(/ /g, " ");
 }
 
-const { useAuthMock, createOrCompletePurchaseRequestMock, refreshDemandesMock } = vi.hoisted(() => ({
-  useAuthMock: vi.fn(),
-  createOrCompletePurchaseRequestMock: vi.fn(),
-  refreshDemandesMock: vi.fn(),
-}));
+const { useAuthMock, createOrCompletePurchaseRequestMock, refreshDemandesMock, listVendeurReviewsMock } =
+  vi.hoisted(() => ({
+    useAuthMock: vi.fn(),
+    createOrCompletePurchaseRequestMock: vi.fn(),
+    refreshDemandesMock: vi.fn(),
+    listVendeurReviewsMock: vi.fn(),
+  }));
 
 vi.mock("@/lib/auth", () => ({ useAuth: useAuthMock }));
+
+vi.mock("@/lib/reviews/api", () => ({ listVendeurReviews: listVendeurReviewsMock }));
 
 vi.mock("@/lib/purchase-requests", async () => {
   const actual =
@@ -109,6 +113,14 @@ describe("ProductDetail", () => {
     useAuthMock.mockReturnValue({ user: DEMO_USER, loading: false, login: vi.fn(), logout: vi.fn(), refresh: vi.fn() });
     createOrCompletePurchaseRequestMock.mockReset();
     refreshDemandesMock.mockReset();
+    listVendeurReviewsMock.mockReset();
+    listVendeurReviewsMock.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      limit: 3,
+      resume: { noteMoyenne: null, nbAvis: 0 },
+    });
   });
 
   it("renders title, formatted price, description, category and vendor", () => {
@@ -183,6 +195,29 @@ describe("ProductDetail", () => {
     });
     renderDetail(product);
     expect(screen.getByText("★ 4.6 (23)")).toBeInTheDocument();
+  });
+
+  it("loads and renders the vendor reviews section for the product's vendeurId", async () => {
+    listVendeurReviewsMock.mockResolvedValueOnce({
+      items: [
+        {
+          note: 5,
+          commentaire: "Rendez-vous respecté à Madina.",
+          dateCreation: "2026-08-01T00:00:00.000Z",
+          auteur: { nom: "Mariama C." },
+          produit: { titre: "Pagne wax" },
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 3,
+      resume: { noteMoyenne: 4.6, nbAvis: 1 },
+    });
+    renderDetail(makeProduct({ vendeurId: "v1" }));
+
+    expect(await screen.findByText("Avis sur ce vendeur")).toBeInTheDocument();
+    expect(screen.getByText("Mariama C.")).toBeInTheDocument();
+    expect(listVendeurReviewsMock).toHaveBeenCalledWith("v1", { page: 1, limit: 3 });
   });
 
   describe("« Ajouter à ma demande »", () => {

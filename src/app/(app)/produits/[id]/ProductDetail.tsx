@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Alert } from "@/components/ui";
 import { PhotoPlaceholder } from "@/components/products/PhotoPlaceholder";
 import { VendeurBadge } from "@/components/products/VendeurBadge";
+import { VendorReviewsSection } from "@/components/reviews/VendorReviewsSection";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatPrixGNF, initialsFromName } from "@/lib/format";
@@ -115,6 +116,8 @@ export function ProductDetail({ product }: { product: ProductView }) {
               {product.description}
             </p>
           </div>
+
+          <VendorReviewsSection vendeurId={product.vendeurId} />
         </div>
 
         <div>

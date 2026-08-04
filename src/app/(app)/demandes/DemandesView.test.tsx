@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -190,7 +190,7 @@ describe("DemandesView", () => {
     expect(await screen.findByText(/3 × 150 000 GNF/)).toBeInTheDocument();
   });
 
-  it("shows a closed demande's outcome badge and an inert « Laisser un avis » action marked bientôt", async () => {
+  it("shows a closed demande's outcome badge and an active « Laisser un avis » button", async () => {
     listPurchaseRequestsMock.mockResolvedValueOnce([
       makeDemande({ id: "d1", statut: "CLOTUREE", resultat: "ABOUTIE" }),
     ]);
@@ -198,8 +198,20 @@ describe("DemandesView", () => {
 
     await screen.findByText("Clôturées (1)");
     expect(screen.getByText("aboutie")).toBeInTheDocument();
-    const avisAction = screen.getByText("Laisser un avis");
-    expect(avisAction.closest("[aria-disabled='true']")).toBeInTheDocument();
-    expect(within(avisAction.parentElement as HTMLElement).getByText("bientôt")).toBeInTheDocument();
+    const avisButton = screen.getByRole("button", { name: "Laisser un avis" });
+    expect(avisButton).not.toHaveAttribute("aria-disabled");
+    expect(screen.queryByText("bientôt")).not.toBeInTheDocument();
+  });
+
+  it("opens the review form when clicking « Laisser un avis » on a closed demande", async () => {
+    const user = userEvent.setup();
+    listPurchaseRequestsMock.mockResolvedValueOnce([
+      makeDemande({ id: "d1", statut: "CLOTUREE", resultat: "ABOUTIE" }),
+    ]);
+    renderView();
+
+    await user.click(await screen.findByRole("button", { name: "Laisser un avis" }));
+
+    expect(screen.getByText("Comment s'est passé l'échange ?")).toBeInTheDocument();
   });
 });
