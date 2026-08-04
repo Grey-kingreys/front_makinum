@@ -89,7 +89,8 @@ describe("AppShell", () => {
     window.localStorage.setItem("makinum.accessToken", "existing-token");
     const fetchMock = fetch as unknown as FetchMock;
     fetchMock.mockResolvedValueOnce(jsonResponse(DEMO_USER));
-    fetchMock.mockResolvedValueOnce(jsonResponse([])); // GET /demandes (DemandesProvider)
+    fetchMock.mockResolvedValueOnce(jsonResponse([])); // GET /demandes?vue=acheteur (DemandesProvider)
+    fetchMock.mockResolvedValueOnce(jsonResponse([])); // GET /demandes?vue=vendeur (DemandesRecuesProvider)
 
     renderShell();
 
@@ -107,7 +108,8 @@ describe("AppShell", () => {
     window.localStorage.setItem("makinum.accessToken", "existing-token");
     const fetchMock = fetch as unknown as FetchMock;
     fetchMock.mockResolvedValueOnce(jsonResponse(DEMO_USER));
-    fetchMock.mockResolvedValueOnce(jsonResponse([])); // GET /demandes (DemandesProvider)
+    fetchMock.mockResolvedValueOnce(jsonResponse([])); // GET /demandes?vue=acheteur (DemandesProvider)
+    fetchMock.mockResolvedValueOnce(jsonResponse([])); // GET /demandes?vue=vendeur (DemandesRecuesProvider)
 
     const user = userEvent.setup();
     renderShell();

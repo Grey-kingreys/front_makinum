@@ -6,11 +6,13 @@ import { clearToken } from "@/lib/auth/token";
 import {
   addPurchaseRequestItem,
   cancelPurchaseRequest,
+  closePurchaseRequest,
   createOrCompletePurchaseRequest,
   getPurchaseRequest,
   listPurchaseRequests,
   removePurchaseRequestItem,
   sendPurchaseRequest,
+  updatePurchaseRequestItemQuantity,
 } from "./api";
 
 type FetchMock = ReturnType<typeof vi.fn>;
@@ -80,14 +82,37 @@ describe("purchase-requests/api", () => {
     expect(result).toEqual({ demande: null });
   });
 
-  it("listPurchaseRequests() calls GET /demandes", async () => {
+  it("updatePurchaseRequestItemQuantity() PATCHes { quantite } to /demandes/:id/items/:produitId", async () => {
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ id: "d1" }));
+
+    await updatePurchaseRequestItemQuantity("d1", "p1", 3);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${getApiBaseUrl()}/demandes/d1/items/p1`);
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(init.body as string)).toEqual({ quantite: 3 });
+  });
+
+  it("listPurchaseRequests('acheteur') calls GET /demandes?vue=acheteur", async () => {
     const fetchMock = fetch as unknown as FetchMock;
     fetchMock.mockResolvedValueOnce(jsonResponse([]));
 
-    await listPurchaseRequests();
+    await listPurchaseRequests("acheteur");
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe(`${getApiBaseUrl()}/demandes`);
+    expect(url).toBe(`${getApiBaseUrl()}/demandes?vue=acheteur`);
+    expect(init.method).toBe("GET");
+  });
+
+  it("listPurchaseRequests('vendeur') calls GET /demandes?vue=vendeur", async () => {
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+
+    await listPurchaseRequests("vendeur");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${getApiBaseUrl()}/demandes?vue=vendeur`);
     expect(init.method).toBe("GET");
   });
 
@@ -122,5 +147,17 @@ describe("purchase-requests/api", () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(`${getApiBaseUrl()}/demandes/d1/annuler`);
     expect(init.method).toBe("POST");
+  });
+
+  it("closePurchaseRequest() POSTs { resultat } to /demandes/:id/cloturer", async () => {
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ id: "d1", statut: "CLOTUREE", resultat: "ABOUTIE" }));
+
+    await closePurchaseRequest("d1", "ABOUTIE");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${getApiBaseUrl()}/demandes/d1/cloturer`);
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ resultat: "ABOUTIE" });
   });
 });

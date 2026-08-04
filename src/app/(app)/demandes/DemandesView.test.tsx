@@ -9,13 +9,13 @@ import { DemandesView } from "./DemandesView";
 
 const {
   listPurchaseRequestsMock,
-  addPurchaseRequestItemMock,
+  updatePurchaseRequestItemQuantityMock,
   removePurchaseRequestItemMock,
   sendPurchaseRequestMock,
   cancelPurchaseRequestMock,
 } = vi.hoisted(() => ({
   listPurchaseRequestsMock: vi.fn(),
-  addPurchaseRequestItemMock: vi.fn(),
+  updatePurchaseRequestItemQuantityMock: vi.fn(),
   removePurchaseRequestItemMock: vi.fn(),
   sendPurchaseRequestMock: vi.fn(),
   cancelPurchaseRequestMock: vi.fn(),
@@ -23,10 +23,11 @@ const {
 
 vi.mock("@/lib/purchase-requests/api", () => ({
   listPurchaseRequests: listPurchaseRequestsMock,
-  addPurchaseRequestItem: addPurchaseRequestItemMock,
+  updatePurchaseRequestItemQuantity: updatePurchaseRequestItemQuantityMock,
   removePurchaseRequestItem: removePurchaseRequestItemMock,
   sendPurchaseRequest: sendPurchaseRequestMock,
   cancelPurchaseRequest: cancelPurchaseRequestMock,
+  closePurchaseRequest: vi.fn(),
   createOrCompletePurchaseRequest: vi.fn(),
   getPurchaseRequest: vi.fn(),
 }));
@@ -64,7 +65,7 @@ function renderView() {
 describe("DemandesView", () => {
   beforeEach(() => {
     listPurchaseRequestsMock.mockReset();
-    addPurchaseRequestItemMock.mockReset();
+    updatePurchaseRequestItemQuantityMock.mockReset();
     removePurchaseRequestItemMock.mockReset();
     sendPurchaseRequestMock.mockReset();
     cancelPurchaseRequestMock.mockReset();
@@ -167,11 +168,11 @@ describe("DemandesView", () => {
     expect(await screen.findByText("Tu n'as pas encore de demande d'achat.")).toBeInTheDocument();
   });
 
-  it("increments an item quantity via the + button (re-POST, additive)", async () => {
+  it("increments an item quantity via the + stepper (PATCH, absolute value)", async () => {
     const user = userEvent.setup();
     const demande = makeDemande({ id: "d1", statut: "EN_COURS" });
     listPurchaseRequestsMock.mockResolvedValueOnce([demande]);
-    addPurchaseRequestItemMock.mockResolvedValueOnce({
+    updatePurchaseRequestItemQuantityMock.mockResolvedValueOnce({
       ...demande,
       items: [{ ...demande.items[0], quantite: 3 }],
     });
@@ -185,9 +186,35 @@ describe("DemandesView", () => {
     await user.click(screen.getByRole("button", { name: /Augmenter la quantité de Sac en raphia/ }));
 
     await waitFor(() =>
-      expect(addPurchaseRequestItemMock).toHaveBeenCalledWith("d1", { produitId: "p1", quantite: 1 }),
+      expect(updatePurchaseRequestItemQuantityMock).toHaveBeenCalledWith("d1", "p1", 3),
     );
     expect(await screen.findByText(/3 × 150 000 GNF/)).toBeInTheDocument();
+  });
+
+  it("decrements an item quantity via the − stepper, down to a minimum of 1", async () => {
+    const user = userEvent.setup();
+    const demande = makeDemande({ id: "d1", statut: "EN_COURS" });
+    listPurchaseRequestsMock.mockResolvedValueOnce([demande]);
+    updatePurchaseRequestItemQuantityMock.mockResolvedValueOnce({
+      ...demande,
+      items: [{ ...demande.items[0], quantite: 1 }],
+    });
+    listPurchaseRequestsMock.mockResolvedValueOnce([
+      { ...demande, items: [{ ...demande.items[0], quantite: 1 }] },
+    ]);
+
+    renderView();
+    await screen.findByText("Sac en raphia");
+
+    await user.click(screen.getByRole("button", { name: /Diminuer la quantité de Sac en raphia/ }));
+
+    await waitFor(() =>
+      expect(updatePurchaseRequestItemQuantityMock).toHaveBeenCalledWith("d1", "p1", 1),
+    );
+    const minusButton = await screen.findByRole("button", {
+      name: /Diminuer la quantité de Sac en raphia/,
+    });
+    expect(minusButton).toBeDisabled();
   });
 
   it("shows a closed demande's outcome badge and an active « Laisser un avis » button", async () => {

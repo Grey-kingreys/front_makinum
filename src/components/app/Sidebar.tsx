@@ -7,7 +7,7 @@ import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { useGeo } from "@/lib/geo";
 import { initialsFromName } from "@/lib/format";
-import { useDemandes } from "@/lib/purchase-requests";
+import { useDemandes, useDemandesRecues } from "@/lib/purchase-requests";
 import type { PublicUser } from "@/lib/auth/types";
 
 import { NotificationBell } from "./NotificationBell";
@@ -19,9 +19,9 @@ import { SearchField } from "./SearchField";
  * section nav selon le rôle, pastille position, carte utilisateur, déconnexion.
  * ACHETEUR : « Produits proches » (actif) et « Ma demande » (/demandes, T16)
  * — badge = nombre de brouillons EN_COURS (DemandesProvider), masqué à 0.
- * VENDEUR (T17a) : « Mon catalogue » (/vendeur/catalogue) et « Demandes
- * reçues » — lien inerte marqué « bientôt » tant que T17b (qui dépend de
- * l'API T9) n'est pas livrée.
+ * VENDEUR : « Mon catalogue » (/vendeur/catalogue, T17a) et « Demandes
+ * reçues » (/vendeur/demandes, T17b) — badge = nombre de demandes ENVOYEE
+ * en attente de clôture (DemandesRecuesProvider), masqué à 0.
  * ADMIN : « File de modération » (/admin/moderation) et « Vendeurs »
  * (/admin/vendeurs).
  * La cloche de notifications (NotificationBell, /notifications) est dans la
@@ -40,7 +40,10 @@ const ACHETEUR_LINKS = [
   { href: "/demandes", label: "Ma demande" },
 ] as const;
 
-const VENDEUR_LINKS = [{ href: "/vendeur/catalogue", label: "Mon catalogue" }] as const;
+const VENDEUR_LINKS = [
+  { href: "/vendeur/catalogue", label: "Mon catalogue" },
+  { href: "/vendeur/demandes", label: "Demandes reçues" },
+] as const;
 
 const ADMIN_LINKS = [
   { href: "/admin/moderation", label: "File de modération" },
@@ -56,6 +59,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
   const pathname = usePathname();
   const { status: geoStatus } = useGeo();
   const { draftCount } = useDemandes();
+  const { pendingCount } = useDemandesRecues();
   const [mobileOpen, setMobileOpen] = useState(false);
   const isVendeur = user.role === "VENDEUR";
   const isAdmin = user.role === "ADMIN";
@@ -136,21 +140,14 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                     {draftCount}
                   </span>
                 ) : null}
+                {link.href === "/vendeur/demandes" && pendingCount > 0 ? (
+                  <span className="rounded-full bg-accent px-[8px] py-[2px] text-[11px] font-semibold text-brand">
+                    {pendingCount}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
-          {isVendeur ? (
-            <div
-              aria-disabled="true"
-              title="Bientôt disponible"
-              className="flex cursor-not-allowed items-center gap-2.5 rounded-[11px] py-[11px] pl-[14px] pr-3 text-[14.5px] text-cream/40"
-            >
-              <span className="flex-1">Demandes reçues</span>
-              <span className="rounded-full bg-cream/12 px-2 py-0.5 text-[11px] text-cream/60">
-                bientôt
-              </span>
-            </div>
-          ) : null}
         </nav>
       </div>
 

@@ -16,10 +16,11 @@ const { createReviewMock, listPurchaseRequestsMock } = vi.hoisted(() => ({
 vi.mock("@/lib/reviews/api", () => ({ createReview: createReviewMock }));
 vi.mock("@/lib/purchase-requests/api", () => ({
   listPurchaseRequests: listPurchaseRequestsMock,
-  addPurchaseRequestItem: vi.fn(),
+  updatePurchaseRequestItemQuantity: vi.fn(),
   removePurchaseRequestItem: vi.fn(),
   sendPurchaseRequest: vi.fn(),
   cancelPurchaseRequest: vi.fn(),
+  closePurchaseRequest: vi.fn(),
   createOrCompletePurchaseRequest: vi.fn(),
   getPurchaseRequest: vi.fn(),
 }));

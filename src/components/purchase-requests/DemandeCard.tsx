@@ -8,11 +8,11 @@ import { VendeurBadge } from "@/components/products/VendeurBadge";
 import { ReviewForm } from "@/components/reviews/ReviewForm";
 import { formatDate, formatPrixGNF, initialsFromName } from "@/lib/format";
 import {
-  addPurchaseRequestItem,
   cancelPurchaseRequest,
   describeDemandeError,
   removePurchaseRequestItem,
   sendPurchaseRequest,
+  updatePurchaseRequestItemQuantity,
   useDemandes,
   type PurchaseRequestItemView,
   type PurchaseRequestView,
@@ -55,11 +55,11 @@ interface DemandeCardProps {
  * actions selon le statut. Partagée entre /demandes (une carte par demande)
  * et /demandes/[id] (une seule carte) — mêmes infos, mêmes actions.
  *
- * « Modifier les quantités » ne propose qu'une augmentation (+1, re-POST
- * additif — backend/src/purchase-requests/purchase-requests.service.ts,
- * `ajouterOuIncrementerItem`) : l'API n'expose aucune décrémentation ni
- * remplacement de quantité, seulement l'ajout (incrémente) et le retrait
- * complet d'une ligne.
+ * Sur un brouillon, la quantité de chaque ligne se règle avec un stepper
+ * −/+ qui fixe une valeur absolue (PATCH /demandes/:id/items/:produitId,
+ * backend/src/purchase-requests/purchase-requests.service.ts,
+ * `modifierQuantiteItem`) — min 1 : en dessous, seul le retrait complet de
+ * la ligne (bouton « Retirer ») reste possible.
  */
 export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
   const { refresh: refreshDemandes } = useDemandes();
@@ -86,14 +86,12 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
     onChanged?.(updated);
   }
 
-  async function handleIncrement(item: PurchaseRequestItemView) {
+  async function handleQuantiteChange(item: PurchaseRequestItemView, quantite: number) {
+    if (quantite < 1) return;
     setItemActionPendingId(item.produitId);
     setItemActionError(null);
     try {
-      const updated = await addPurchaseRequestItem(demande.id, {
-        produitId: item.produitId,
-        quantite: 1,
-      });
+      const updated = await updatePurchaseRequestItemQuantity(demande.id, item.produitId, quantite);
       await applyUpdate(updated);
     } catch (err) {
       setItemActionError(describeDemandeError(err, "Impossible de modifier cette ligne."));
@@ -196,15 +194,32 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
             </div>
             {isBrouillon ? (
               <div className="flex shrink-0 items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleIncrement(item)}
-                  disabled={itemActionPendingId === item.produitId}
-                  aria-label={`Augmenter la quantité de ${item.produit.titre}`}
-                  className="grid h-8 w-8 place-items-center rounded-full border border-border-strong text-[15px] text-ink transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  +
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleQuantiteChange(item, item.quantite - 1)}
+                    disabled={itemActionPendingId === item.produitId || item.quantite <= 1}
+                    aria-label={`Diminuer la quantité de ${item.produit.titre}`}
+                    className="grid h-8 w-8 place-items-center rounded-full border border-border-strong text-[15px] text-ink transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    −
+                  </button>
+                  <span
+                    aria-label={`Quantité de ${item.produit.titre}`}
+                    className="min-w-[1.5em] text-center text-[14px] font-medium text-ink"
+                  >
+                    {item.quantite}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleQuantiteChange(item, item.quantite + 1)}
+                    disabled={itemActionPendingId === item.produitId}
+                    aria-label={`Augmenter la quantité de ${item.produit.titre}`}
+                    className="grid h-8 w-8 place-items-center rounded-full border border-border-strong text-[15px] text-ink transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    +
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => handleRemove(item)}

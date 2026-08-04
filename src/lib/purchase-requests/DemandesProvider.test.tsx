@@ -64,15 +64,8 @@ describe("DemandesProvider", () => {
     expect(screen.getByTestId("draftCount")).toHaveTextContent("2");
   });
 
-  it("filters out demandes received as vendor (no statutVendeur on the interlocuteur)", async () => {
-    listPurchaseRequestsMock.mockResolvedValueOnce([
-      makeDemande({ id: "mine", interlocuteur: { id: "v1", nom: "Fatoumata", statutVendeur: "LIBRE" } }),
-      makeDemande({
-        id: "received",
-        statut: "ENVOYEE",
-        interlocuteur: { id: "acheteur-1", nom: "Ibrahima" },
-      }),
-    ]);
+  it("fetches with vue=acheteur (backend now scopes the list, no client-side filter needed)", async () => {
+    listPurchaseRequestsMock.mockResolvedValueOnce([makeDemande({ id: "d1" })]);
 
     render(
       <DemandesProvider>
@@ -80,7 +73,8 @@ describe("DemandesProvider", () => {
       </DemandesProvider>,
     );
 
-    await waitFor(() => expect(screen.getByTestId("count")).toHaveTextContent("1"));
+    await waitFor(() => expect(listPurchaseRequestsMock).toHaveBeenCalledWith("acheteur"));
+    expect(screen.getByTestId("count")).toHaveTextContent("1");
   });
 
   it("exposes an error message when the fetch fails, and 0 for draftCount", async () => {

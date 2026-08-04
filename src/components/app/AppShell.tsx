@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { GeoProvider } from "@/lib/geo";
 import { NotificationsProvider } from "@/lib/notifications";
-import { DemandesProvider } from "@/lib/purchase-requests";
+import { DemandesProvider, DemandesRecuesProvider } from "@/lib/purchase-requests";
 
 import { Sidebar } from "./Sidebar";
 
@@ -14,9 +14,11 @@ import { Sidebar } from "./Sidebar";
  * Coquille du groupe de routes (app) : protège /produits et consorts
  * derrière une session active (AuthProvider) — sans utilisateur chargé,
  * redirection vers /connexion — puis rend la sidebar + le contenu de page.
- * `GeoProvider`, `DemandesProvider` et `NotificationsProvider` sont montés
- * ici (au-dessus de la sidebar ET du contenu) pour que la position acquise,
- * le compteur de demandes en cours (badge sidebar, T16) et le compteur de
+ * `GeoProvider`, `DemandesProvider`, `DemandesRecuesProvider` et
+ * `NotificationsProvider` sont montés ici (au-dessus de la sidebar ET du
+ * contenu), pour tous les rôles, afin que la position acquise, le compteur
+ * de demandes en cours (badge « Ma demande », T16), le compteur de demandes
+ * reçues en attente (badge « Demandes reçues », T17b) et le compteur de
  * notifications non lues (cloche sidebar) soient visibles partout, une
  * seule fois la session confirmée active.
  */
@@ -44,12 +46,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <GeoProvider>
       <DemandesProvider>
-        <NotificationsProvider>
-          <div className="flex min-h-screen flex-col md:flex-row">
-            <Sidebar user={user} onLogout={handleLogout} />
-            <main className="min-w-0 flex-1 bg-cream">{children}</main>
-          </div>
-        </NotificationsProvider>
+        <DemandesRecuesProvider>
+          <NotificationsProvider>
+            <div className="flex min-h-screen flex-col md:flex-row">
+              <Sidebar user={user} onLogout={handleLogout} />
+              <main className="min-w-0 flex-1 bg-cream">{children}</main>
+            </div>
+          </NotificationsProvider>
+        </DemandesRecuesProvider>
       </DemandesProvider>
     </GeoProvider>
   );

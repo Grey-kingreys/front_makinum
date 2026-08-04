@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GeoProvider } from "@/lib/geo";
 import { NotificationsProvider } from "@/lib/notifications";
-import { DemandesProvider } from "@/lib/purchase-requests";
+import { DemandesProvider, DemandesRecuesProvider } from "@/lib/purchase-requests";
 import type { PublicUser } from "@/lib/auth/types";
 import type { PurchaseRequestView } from "@/lib/purchase-requests/types";
 
@@ -66,14 +66,17 @@ async function renderSidebar(user: PublicUser) {
   const utils = render(
     <GeoProvider>
       <DemandesProvider>
-        <NotificationsProvider>
-          <Sidebar user={user} onLogout={vi.fn()} />
-        </NotificationsProvider>
+        <DemandesRecuesProvider>
+          <NotificationsProvider>
+            <Sidebar user={user} onLogout={vi.fn()} />
+          </NotificationsProvider>
+        </DemandesRecuesProvider>
       </DemandesProvider>
     </GeoProvider>,
   );
-  // Laisse les fetchs initiaux de DemandesProvider/NotificationsProvider se résoudre.
-  await waitFor(() => expect(listPurchaseRequestsMock).toHaveBeenCalled());
+  // Laisse les fetchs initiaux de DemandesProvider (vue=acheteur),
+  // DemandesRecuesProvider (vue=vendeur) et NotificationsProvider se résoudre.
+  await waitFor(() => expect(listPurchaseRequestsMock).toHaveBeenCalledTimes(2));
   await waitFor(() => expect(listNotificationsMock).toHaveBeenCalled());
   return utils;
 }
@@ -99,7 +102,7 @@ describe("Sidebar", () => {
     expect(screen.queryByText("Demandes reçues")).not.toBeInTheDocument();
   });
 
-  it("shows the VENDEUR nav (Mon catalogue + Demandes reçues inert « bientôt ») for a seller", async () => {
+  it("shows the VENDEUR nav (Mon catalogue + Demandes reçues, both active) for a seller", async () => {
     await renderSidebar(makeUser({ role: "VENDEUR" }));
 
     const catalogueLink = screen.getByRole("link", { name: "Mon catalogue" });
@@ -109,11 +112,27 @@ describe("Sidebar", () => {
     expect(screen.queryByRole("link", { name: "Produits proches" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Ma demande/ })).not.toBeInTheDocument();
 
-    const demandesRecues = screen.getByText("Demandes reçues");
-    expect(demandesRecues.closest("[aria-disabled='true']")).toBeInTheDocument();
-    expect(screen.getByText("bientôt")).toBeInTheDocument();
-    // Not a link : no navigation is wired yet (T17b).
-    expect(screen.queryByRole("link", { name: /Demandes reçues/ })).not.toBeInTheDocument();
+    const demandesRecuesLink = screen.getByRole("link", { name: "Demandes reçues" });
+    expect(demandesRecuesLink).toHaveAttribute("href", "/vendeur/demandes");
+    expect(screen.queryByText("bientôt")).not.toBeInTheDocument();
+  });
+
+  it("shows the ENVOYEE pending count as a badge on « Demandes reçues »", async () => {
+    listPurchaseRequestsMock.mockImplementation((vue: string) =>
+      Promise.resolve(
+        vue === "vendeur"
+          ? [
+              makeDemande({ id: "r1", statut: "ENVOYEE", vendeurId: "u1" }),
+              makeDemande({ id: "r2", statut: "ENVOYEE", vendeurId: "u1" }),
+              makeDemande({ id: "r3", statut: "CLOTUREE", resultat: "ABOUTIE", vendeurId: "u1" }),
+            ]
+          : [],
+      ),
+    );
+    await renderSidebar(makeUser({ role: "VENDEUR" }));
+
+    const link = await screen.findByRole("link", { name: /Demandes reçues/ });
+    expect(link).toHaveTextContent("2");
   });
 
   it("hides the badge on « Ma demande » when there are no EN_COURS drafts", async () => {

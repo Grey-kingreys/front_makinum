@@ -16,12 +16,7 @@ import { listPurchaseRequests } from "./api";
 import type { PurchaseRequestView } from "./types";
 
 export interface DemandesContextValue {
-  /**
-   * Mes demandes en tant qu'ACHETEUR uniquement. GET /demandes renvoie aussi
-   * les demandes reçues côté vendeur (ENVOYEE/CLOTUREE — CDC §12.4 : un
-   * vendeur peut acheter ailleurs), hors périmètre de « Ma demande d'achat »
-   * (T16, voir refresh() ci-dessous pour le filtre).
-   */
+  /** Mes demandes en tant qu'ACHETEUR uniquement (GET /demandes?vue=acheteur). */
   demandes: PurchaseRequestView[] | null;
   loading: boolean;
   error: string | null;
@@ -33,12 +28,14 @@ export interface DemandesContextValue {
 const DemandesContext = createContext<DemandesContextValue | null>(null);
 
 /**
- * Partage la liste de mes demandes d'achat entre la sidebar (badge « Ma
- * demande ») et les pages /demandes, /demandes/[id] — même pattern que
- * GeoProvider (src/lib/geo/GeoProvider.tsx) : monté une fois dans AppShell,
- * au-dessus de la sidebar et du contenu de page, et rafraîchi (refresh())
- * après chaque mutation (ajout, envoi, annulation, retrait d'article) pour
- * que le compteur reste synchronisé sans re-fetch dupliqué à chaque écran.
+ * Partage la liste de mes demandes d'achat (en tant qu'ACHETEUR) entre la
+ * sidebar (badge « Ma demande ») et les pages /demandes, /demandes/[id] —
+ * même pattern que GeoProvider (src/lib/geo/GeoProvider.tsx) : monté une
+ * fois dans AppShell, au-dessus de la sidebar et du contenu de page, et
+ * rafraîchi (refresh()) après chaque mutation (ajout, envoi, annulation,
+ * retrait d'article) pour que le compteur reste synchronisé sans re-fetch
+ * dupliqué à chaque écran. Équivalent côté vendeur : DemandesRecuesProvider
+ * (GET /demandes?vue=vendeur).
  *
  * AppShell ne monte ce provider qu'une fois la session active confirmée
  * (même emplacement que GeoProvider) : il n'a donc pas besoin de consulter
@@ -53,13 +50,8 @@ export function DemandesProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const list = await listPurchaseRequests();
-      // Ne garde que « mes demandes en tant qu'acheteur » : sur les
-      // demandes reçues côté vendeur, `interlocuteur.statutVendeur` est
-      // toujours absent (backend/src/purchase-requests/purchase-requests.service.ts,
-      // `versVue` — seul le côté acheteur voit le statutVendeur du vendeur).
-      // Ce signal évite de dépendre d'AuthContext pour connaître mon propre id.
-      setDemandes(list.filter((demande) => demande.interlocuteur.statutVendeur !== undefined));
+      const list = await listPurchaseRequests("acheteur");
+      setDemandes(list);
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Impossible de charger tes demandes. Réessaie.",

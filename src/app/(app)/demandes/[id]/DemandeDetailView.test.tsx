@@ -34,7 +34,8 @@ vi.mock("@/lib/purchase-requests/api", () => ({
   removePurchaseRequestItem: removePurchaseRequestItemMock,
   sendPurchaseRequest: sendPurchaseRequestMock,
   cancelPurchaseRequest: cancelPurchaseRequestMock,
-  addPurchaseRequestItem: vi.fn(),
+  updatePurchaseRequestItemQuantity: vi.fn(),
+  closePurchaseRequest: vi.fn(),
   createOrCompletePurchaseRequest: vi.fn(),
 }));
 
