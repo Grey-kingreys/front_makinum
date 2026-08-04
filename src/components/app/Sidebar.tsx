@@ -12,12 +12,14 @@ import type { PublicUser } from "@/lib/auth/types";
 import { SearchField } from "./SearchField";
 
 /**
- * Sidebar applicative acheteur — reproduit l'écran « isApp » du prototype
+ * Sidebar applicative — reproduit l'écran « isApp » du prototype
  * (docs/Design de marketplace locale/Makinum.dc.html) : logo, recherche,
- * section nav ACHETEUR, pastille position, carte utilisateur, déconnexion.
- * Seuls deux liens sont câblés pour l'instant (T15) : « Produits proches »
- * (actif) et « Ma demande » (route /demande de T16, pas encore créée — le
- * badge compteur n'affiche rien tant que la source de données n'existe pas).
+ * section nav selon le rôle, pastille position, carte utilisateur, déconnexion.
+ * ACHETEUR (T15) : « Produits proches » (actif) et « Ma demande » (route
+ * /demande de T16, pas encore créée — le badge compteur n'affiche rien tant
+ * que la source de données n'existe pas). VENDEUR (T17a) : « Mon catalogue »
+ * (/vendeur/catalogue) et « Demandes reçues » — lien inerte marqué « bientôt »
+ * tant que T17b (qui dépend de l'API T9) n'est pas livrée.
  */
 
 const ROLE_LABELS: Record<PublicUser["role"], string> = {
@@ -26,10 +28,12 @@ const ROLE_LABELS: Record<PublicUser["role"], string> = {
   ADMIN: "Admin",
 };
 
-const NAV_LINKS = [
+const ACHETEUR_LINKS = [
   { href: "/produits", label: "Produits proches" },
   { href: "/demande", label: "Ma demande" },
 ] as const;
+
+const VENDEUR_LINKS = [{ href: "/vendeur/catalogue", label: "Mon catalogue" }] as const;
 
 interface SidebarProps {
   user: PublicUser;
@@ -40,6 +44,8 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
   const pathname = usePathname();
   const { status: geoStatus } = useGeo();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isVendeur = user.role === "VENDEUR";
+  const navLinks = isVendeur ? VENDEUR_LINKS : ACHETEUR_LINKS;
 
   return (
     <div className="shrink-0 bg-brand text-cream md:sticky md:top-0 md:flex md:h-screen md:w-[252px] md:flex-col md:self-start md:px-4 md:py-[22px]">
@@ -81,8 +87,11 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
         <div className="mb-[10px] px-[10px] text-[11px] uppercase tracking-[0.14em] text-cream/38">
           {ROLE_LABELS[user.role]}
         </div>
-        <nav className="flex flex-col gap-1" aria-label="Navigation acheteur">
-          {NAV_LINKS.map((link) => {
+        <nav
+          className="flex flex-col gap-1"
+          aria-label={isVendeur ? "Navigation vendeur" : "Navigation acheteur"}
+        >
+          {navLinks.map((link) => {
             const active = pathname === link.href || pathname?.startsWith(`${link.href}/`);
             return (
               <Link
@@ -108,6 +117,18 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
               </Link>
             );
           })}
+          {isVendeur ? (
+            <div
+              aria-disabled="true"
+              title="Bientôt disponible"
+              className="flex cursor-not-allowed items-center gap-2.5 rounded-[11px] py-[11px] pl-[14px] pr-3 text-[14.5px] text-cream/40"
+            >
+              <span className="flex-1">Demandes reçues</span>
+              <span className="rounded-full bg-cream/12 px-2 py-0.5 text-[11px] text-cream/60">
+                bientôt
+              </span>
+            </div>
+          ) : null}
         </nav>
       </div>
 

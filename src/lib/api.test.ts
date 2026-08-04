@@ -118,4 +118,19 @@ describe("apiFetch", () => {
     const headers = init.headers as Headers;
     expect(headers.has("Authorization")).toBe(false);
   });
+
+  it("passes a FormData body through unserialized, without forcing a Content-Type", async () => {
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ id: "photo-1" }));
+
+    const formData = new FormData();
+    formData.append("photo", new File(["binary"], "photo.jpg", { type: "image/jpeg" }));
+
+    await apiFetch("/products/p1/photos", { method: "POST", body: formData });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.body).toBe(formData);
+    const headers = init.headers as Headers;
+    expect(headers.has("Content-Type")).toBe(false);
+  });
 });

@@ -62,25 +62,33 @@ async function parseResponseBody(response: Response): Promise<unknown> {
 }
 
 export interface ApiFetchOptions extends Omit<RequestInit, "body"> {
-  /** Sérialisé en JSON automatiquement (Content-Type appliqué si absent). */
+  /**
+   * Sérialisé en JSON automatiquement (Content-Type appliqué si absent).
+   * Un `FormData` (premier usage : upload de photos produit, voir
+   * src/lib/products/vendor-api.ts) est transmis tel quel, sans sérialisation
+   * ni Content-Type imposé — le navigateur pose lui-même le `boundary`
+   * multipart, qu'un Content-Type manuel écraserait.
+   */
   body?: unknown;
   /** N'injecte pas l'en-tête Authorization même si un jeton est présent. */
   skipAuth?: boolean;
 }
 
 /**
- * Wrapper fetch générique vers l'API Makinum : sérialise le corps en JSON,
- * injecte `Authorization: Bearer <token>` si une session est active, et lève
- * une {@link ApiError} typée en cas d'échec.
+ * Wrapper fetch générique vers l'API Makinum : sérialise le corps en JSON
+ * (ou le transmet tel quel s'il s'agit d'un FormData), injecte
+ * `Authorization: Bearer <token>` si une session est active, et lève une
+ * {@link ApiError} typée en cas d'échec.
  */
 export async function apiFetch<T = unknown>(
   path: string,
   options: ApiFetchOptions = {},
 ): Promise<T> {
   const { body, skipAuth = false, headers, ...rest } = options;
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
 
   const finalHeaders = new Headers(headers);
-  if (body !== undefined && !finalHeaders.has("Content-Type")) {
+  if (body !== undefined && !isFormData && !finalHeaders.has("Content-Type")) {
     finalHeaders.set("Content-Type", "application/json");
   }
   if (!skipAuth) {
@@ -95,7 +103,7 @@ export async function apiFetch<T = unknown>(
     response = await fetch(`${getApiBaseUrl()}${path}`, {
       ...rest,
       headers: finalHeaders,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isFormData ? (body as FormData) : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, "Impossible de joindre le serveur Makinum.", "NETWORK_ERROR");
