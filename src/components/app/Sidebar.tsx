@@ -170,7 +170,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-[14px] font-medium text-cream">{user.nom}</div>
-            <div className="truncate text-[12px] text-cream/50">{user.telephone}</div>
+            <div className="truncate text-[12px] text-cream/50">{user.telephone ?? user.email}</div>
           </div>
         </div>
 

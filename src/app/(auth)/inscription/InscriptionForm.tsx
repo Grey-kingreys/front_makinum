@@ -17,10 +17,12 @@ interface RegisterResponse {
 function describeRegisterError(error: unknown): string {
   if (error instanceof ApiError) {
     switch (error.code) {
-      case "PHONE_ALREADY_USED":
-        return "Ce numéro de téléphone est déjà utilisé.";
       case "EMAIL_ALREADY_USED":
         return "Cet email est déjà utilisé.";
+      case "PHONE_ALREADY_USED":
+        return "Ce numéro de téléphone est déjà utilisé.";
+      case "VENDOR_PHONE_REQUIRED":
+        return "Un numéro de téléphone est obligatoire pour un compte vendeur : c'est ton canal de contact avec les acheteurs.";
       case "INVALID_PHONE":
         return "Numéro de téléphone invalide.";
       case "RATE_LIMITED":
@@ -40,19 +42,23 @@ const ROLE_OPTIONS: { value: RolePublic; label: string }[] = [
 export function InscriptionForm() {
   const router = useRouter();
 
-  const [nom, setNom] = useState("");
-  const [telephone, setTelephone] = useState("");
   const [email, setEmail] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
+  const [nom, setNom] = useState("");
+  const [telephone, setTelephone] = useState("");
   const [role, setRole] = useState<RolePublic>("ACHETEUR");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const telephoneRequired = role === "VENDEUR";
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const cleanEmail = email.trim();
     const cleanNom = nom.trim();
     const cleanTelephone = telephone.trim();
-    if (!cleanNom || !cleanTelephone || !motDePasse) return;
+    if (!cleanEmail || !cleanNom || !motDePasse) return;
+    if (telephoneRequired && !cleanTelephone) return;
 
     setSubmitting(true);
     setError(null);
@@ -62,13 +68,13 @@ export function InscriptionForm() {
         skipAuth: true,
         body: {
           nom: cleanNom,
-          telephone: cleanTelephone,
+          email: cleanEmail,
           motDePasse,
           role,
-          email: email.trim() || undefined,
+          telephone: cleanTelephone || undefined,
         },
       });
-      router.push(`/verification?telephone=${encodeURIComponent(cleanTelephone)}`);
+      router.push(`/verification?email=${encodeURIComponent(cleanEmail)}`);
     } catch (err) {
       setError(describeRegisterError(err));
       setSubmitting(false);
@@ -81,7 +87,7 @@ export function InscriptionForm() {
         Créer un compte
       </h1>
       <p className="mb-6 text-[14.5px] text-brand-subtle">
-        Tes informations — un code de vérification suivra par SMS.
+        Tes informations — un code de vérification suivra par email.
       </p>
 
       {error ? (
@@ -92,32 +98,14 @@ export function InscriptionForm() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-[15px]">
         <Input
-          label="Nom affiché"
-          name="nom"
-          autoComplete="name"
-          placeholder="Fatoumata Bangoura"
-          value={nom}
-          onChange={(event) => setNom(event.target.value)}
-          required
-        />
-        <Input
-          label="Numéro de téléphone"
-          name="telephone"
-          type="tel"
-          autoComplete="tel"
-          placeholder="+224 622 00 00 00"
-          value={telephone}
-          onChange={(event) => setTelephone(event.target.value)}
-          required
-        />
-        <Input
-          label="Email — optionnel, sert à récupérer le compte"
+          label="Email"
           name="email"
           type="email"
           autoComplete="email"
           placeholder="fatoumata@exemple.gn"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
+          required
         />
         <Input
           label="Mot de passe"
@@ -128,6 +116,15 @@ export function InscriptionForm() {
           minLength={8}
           value={motDePasse}
           onChange={(event) => setMotDePasse(event.target.value)}
+          required
+        />
+        <Input
+          label="Nom affiché"
+          name="nom"
+          autoComplete="name"
+          placeholder="Fatoumata Bangoura"
+          value={nom}
+          onChange={(event) => setNom(event.target.value)}
           required
         />
 
@@ -154,11 +151,27 @@ export function InscriptionForm() {
           </div>
         </div>
 
+        <Input
+          label={telephoneRequired ? "Numéro de téléphone" : "Numéro de téléphone — optionnel"}
+          name="telephone"
+          type="tel"
+          autoComplete="tel"
+          placeholder="+224 622 00 00 00"
+          value={telephone}
+          onChange={(event) => setTelephone(event.target.value)}
+          required={telephoneRequired}
+          hint={
+            telephoneRequired
+              ? "Ton numéro sera visible par les acheteurs pour te contacter."
+              : "Optionnel — sert de canal de contact si tu vends plus tard."
+          }
+        />
+
         <Button type="submit" size="lg" disabled={submitting} aria-busy={submitting} className="mt-1">
           {submitting ? "Envoi…" : "Recevoir mon code"}
         </Button>
         <p className="text-[12.5px] leading-relaxed text-brand-faint">
-          Code envoyé par SMS, une seule fois. Nombre de demandes limité par heure.
+          Code envoyé par email, une seule fois. Nombre de demandes limité par heure.
         </p>
       </form>
 

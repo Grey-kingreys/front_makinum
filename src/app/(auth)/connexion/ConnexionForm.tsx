@@ -13,7 +13,7 @@ const RECOVERY_SUCCESS_PARAM = "recupere";
 
 interface LoginErrorInfo {
   message: string;
-  /** INVALID_CREDENTIALS/PHONE_NOT_VERIFIED : propose un lien vers /verification. */
+  /** INVALID_CREDENTIALS/EMAIL_NOT_VERIFIED : propose un lien vers /verification. */
   showVerifyLink: boolean;
 }
 
@@ -22,10 +22,9 @@ function describeLoginError(error: unknown): LoginErrorInfo {
     switch (error.code) {
       case "INVALID_CREDENTIALS":
         return { message: "Identifiant ou mot de passe incorrect.", showVerifyLink: false };
-      case "PHONE_NOT_VERIFIED":
+      case "EMAIL_NOT_VERIFIED":
         return {
-          message:
-            "Numéro de téléphone non vérifié : valide le code reçu par SMS pour te connecter.",
+          message: "Adresse email non vérifiée : valide le code reçu par email pour te connecter.",
           showVerifyLink: true,
         };
       case "ACCOUNT_SUSPENDED":
@@ -86,7 +85,7 @@ export function ConnexionForm() {
       <h1 className="mb-1.5 font-display text-[27px] font-bold tracking-tight text-ink">
         Se connecter
       </h1>
-      <p className="mb-6 text-[14.5px] text-brand-subtle">Avec ton numéro ou ton email.</p>
+      <p className="mb-6 text-[14.5px] text-brand-subtle">Avec ton email ou ton numéro vérifié.</p>
 
       {recoverySuccess ? (
         <Alert variant="success" className="mb-5">
@@ -101,10 +100,10 @@ export function ConnexionForm() {
             <>
               {" "}
               <Link
-                href={`/verification?telephone=${encodeURIComponent(identifiant.trim())}`}
+                href={`/verification?email=${encodeURIComponent(identifiant.trim())}`}
                 className="font-medium underline"
               >
-                Vérifier mon numéro
+                Vérifier mon email
               </Link>
             </>
           ) : null}
@@ -113,10 +112,10 @@ export function ConnexionForm() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-[14px]">
         <Input
-          label="Numéro ou email"
+          label="Email ou numéro vérifié"
           name="identifiant"
           autoComplete="username"
-          placeholder="+224 622 00 00 00"
+          placeholder="fatoumata@exemple.gn"
           value={identifiant}
           onChange={(event) => setIdentifiant(event.target.value)}
           required

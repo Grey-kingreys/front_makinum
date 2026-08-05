@@ -100,7 +100,7 @@ describe("AppShell", () => {
     expect(activeLink).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: /Ma demande/ })).toHaveAttribute("href", "/demandes");
     expect(screen.getByText(DEMO_USER.nom)).toBeInTheDocument();
-    expect(screen.getByText(DEMO_USER.telephone)).toBeInTheDocument();
+    expect(screen.getByText(DEMO_USER.telephone as string)).toBeInTheDocument();
     expect(replaceMock).not.toHaveBeenCalled();
   });
 

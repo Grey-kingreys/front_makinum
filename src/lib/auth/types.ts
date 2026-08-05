@@ -8,7 +8,8 @@ export type StatutCompte = "ACTIF" | "SUSPENDU";
 export interface PublicUser {
   id: string;
   nom: string;
-  telephone: string;
+  /** Canal de contact appel/WhatsApp — optionnel sauf pour un vendeur (backend `VENDOR_PHONE_REQUIRED`). */
+  telephone: string | null;
   telephoneVerifie: boolean;
   email?: string | null;
   emailVerifie: boolean;

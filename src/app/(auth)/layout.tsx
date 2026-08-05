@@ -22,11 +22,11 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
         <div>
           <h1 className="mb-[18px] max-w-[400px] font-display text-[40px] font-extrabold leading-[1.04] tracking-tight">
-            Ton numéro, un mot de passe. C&apos;est tout.
+            Ton email, un mot de passe. C&apos;est tout.
           </h1>
           <p className="max-w-[420px] text-[16px] leading-[1.6] text-cream/70">
-            On vérifie ton numéro une seule fois par code. Ensuite tu te connectes
-            normalement — pas de SMS à chaque fois.
+            On vérifie ton email une seule fois par code. Ensuite tu te connectes
+            normalement — pas de code à chaque fois.
           </p>
         </div>
 

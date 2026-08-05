@@ -26,7 +26,7 @@ const GENERIC_MESSAGE =
 
 async function goToStepTwo(user: ReturnType<typeof userEvent.setup>, fetchMock: FetchMock) {
   fetchMock.mockResolvedValueOnce(jsonResponse({ message: GENERIC_MESSAGE }));
-  await user.type(screen.getByLabelText("Numéro ou email"), "+224622000000");
+  await user.type(screen.getByLabelText("Email"), "fatoumata@exemple.gn");
   await user.click(screen.getByRole("button", { name: "Recevoir le code" }));
   await screen.findByLabelText("Code reçu");
 }
@@ -51,7 +51,7 @@ describe("RecuperationForm", () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toContain("/auth/recovery/request");
     expect(init.method).toBe("POST");
-    expect(JSON.parse(init.body as string)).toEqual({ identifiant: "+224622000000" });
+    expect(JSON.parse(init.body as string)).toEqual({ identifiant: "fatoumata@exemple.gn" });
 
     expect(screen.getByRole("status")).toHaveTextContent(GENERIC_MESSAGE);
     expect(screen.getByLabelText("Nouveau mot de passe")).toBeInTheDocument();
@@ -68,7 +68,7 @@ describe("RecuperationForm", () => {
     );
 
     render(<RecuperationForm />);
-    await user.type(screen.getByLabelText("Numéro ou email"), "+224622000000");
+    await user.type(screen.getByLabelText("Email"), "fatoumata@exemple.gn");
     await user.click(screen.getByRole("button", { name: "Recevoir le code" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -94,7 +94,7 @@ describe("RecuperationForm", () => {
     const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(url).toContain("/auth/recovery/reset");
     expect(JSON.parse(init.body as string)).toEqual({
-      identifiant: "+224622000000",
+      identifiant: "fatoumata@exemple.gn",
       code: "654321",
       nouveauMotDePasse: "nouveauSecret123",
     });

@@ -99,7 +99,7 @@ export function RecuperationForm() {
           Nouveau mot de passe
         </h1>
         <p className="mb-6 text-[14.5px] text-brand-subtle">
-          Code à 6 chiffres envoyé si le compte existe, et nouveau mot de passe.
+          Code à 6 chiffres envoyé par email si le compte existe, et nouveau mot de passe.
         </p>
 
         {infoMessage ? (
@@ -159,7 +159,7 @@ export function RecuperationForm() {
         Récupérer mon compte
       </h1>
       <p className="mb-6 text-[14.5px] text-brand-subtle">
-        Indique ton numéro ou ton email pour recevoir un code de réinitialisation.
+        Indique ton email (ou ton numéro vérifié) pour recevoir un code de réinitialisation.
       </p>
 
       {error ? (
@@ -170,10 +170,10 @@ export function RecuperationForm() {
 
       <form onSubmit={handleRequest} className="flex flex-col gap-[14px]">
         <Input
-          label="Numéro ou email"
+          label="Email"
           name="identifiant"
           autoComplete="username"
-          placeholder="+224 622 00 00 00"
+          placeholder="fatoumata@exemple.gn"
           value={identifiant}
           onChange={(event) => setIdentifiant(event.target.value)}
           required

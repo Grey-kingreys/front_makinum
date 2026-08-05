@@ -89,7 +89,7 @@ function UserRow({
           </div>
           <div>
             <div className="text-[14.5px] font-medium text-ink">{user.nom}</div>
-            <div className="text-[12.5px] text-brand-faint">{user.telephone}</div>
+            <div className="text-[12.5px] text-brand-faint">{user.telephone ?? user.email}</div>
           </div>
         </div>
 

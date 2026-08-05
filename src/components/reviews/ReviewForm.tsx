@@ -76,12 +76,13 @@ export function ReviewForm({ purchaseRequestId, onSubmitted, onAlreadyExists, on
         <div className="flex gap-2">
           {NOTES.map((value) => {
             const checked = note === value;
+            const filled = note !== null && value <= note;
             return (
               <label
                 key={value}
                 className={cn(
                   "grid h-11 w-11 cursor-pointer place-items-center rounded-xl border text-[20px] transition-colors",
-                  checked
+                  filled
                     ? "border-accent bg-tint-accent text-accent-strong"
                     : "border-border-strong text-brand-faint hover:border-brand",
                 )}

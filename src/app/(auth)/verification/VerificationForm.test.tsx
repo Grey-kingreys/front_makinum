@@ -8,7 +8,7 @@ type FetchMock = ReturnType<typeof vi.fn>;
 
 const { pushMock, useSearchParamsMock } = vi.hoisted(() => ({
   pushMock: vi.fn(),
-  useSearchParamsMock: vi.fn(() => new URLSearchParams("telephone=%2B224622000000")),
+  useSearchParamsMock: vi.fn(() => new URLSearchParams("email=fatoumata%40exemple.gn")),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -29,35 +29,37 @@ describe("VerificationForm", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
     pushMock.mockClear();
-    useSearchParamsMock.mockReturnValue(new URLSearchParams("telephone=%2B224622000000"));
+    useSearchParamsMock.mockReturnValue(new URLSearchParams("email=fatoumata%40exemple.gn"));
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("calls verify-phone with the code and telephone from the query, then redirects", async () => {
+  it("calls verify-email (no token) with the code and email from the query, then redirects", async () => {
     const user = userEvent.setup();
     const fetchMock = fetch as unknown as FetchMock;
-    fetchMock.mockResolvedValueOnce(jsonResponse({ message: "Numéro de téléphone vérifié" }));
+    fetchMock.mockResolvedValueOnce(jsonResponse({ message: "Email vérifié" }));
 
     render(<VerificationForm />);
 
-    await user.type(screen.getByLabelText("Code reçu par SMS"), "123456");
+    await user.type(screen.getByLabelText("Code reçu par email"), "123456");
     await user.click(screen.getByRole("button", { name: "Valider le code" }));
 
     const [url, init] = await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
       return fetchMock.mock.calls[0] as [string, RequestInit];
     });
-    expect(url).toContain("/auth/otp/verify-phone");
+    expect(url).toContain("/auth/otp/verify-email");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body as string)).toEqual({
-      telephone: "+224622000000",
+      email: "fatoumata@exemple.gn",
       code: "123456",
     });
+    // Route publique : aucun jeton requis.
+    expect((init.headers as Headers | undefined)?.get?.("Authorization")).toBeFalsy();
 
-    expect(await screen.findByRole("status")).toHaveTextContent("Numéro de téléphone vérifié");
+    expect(await screen.findByRole("status")).toHaveTextContent("Email vérifié");
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/connexion"), { timeout: 5000 });
   });
 
@@ -70,14 +72,14 @@ describe("VerificationForm", () => {
 
     render(<VerificationForm />);
 
-    await user.type(screen.getByLabelText("Code reçu par SMS"), "000000");
+    await user.type(screen.getByLabelText("Code reçu par email"), "000000");
     await user.click(screen.getByRole("button", { name: "Valider le code" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Code invalide ou expiré.");
     expect(pushMock).not.toHaveBeenCalled();
   });
 
-  it("requests a new OTP via 'Renvoyer le code'", async () => {
+  it("requests a new OTP (usage VERIFY_EMAIL) via 'Renvoyer le code'", async () => {
     const user = userEvent.setup();
     const fetchMock = fetch as unknown as FetchMock;
     fetchMock.mockResolvedValueOnce(
@@ -96,8 +98,8 @@ describe("VerificationForm", () => {
     });
     expect(url).toContain("/auth/otp/request");
     expect(JSON.parse(init.body as string)).toEqual({
-      telephone: "+224622000000",
-      usage: "VERIFY_PHONE",
+      email: "fatoumata@exemple.gn",
+      usage: "VERIFY_EMAIL",
     });
 
     expect(await screen.findByRole("status")).toHaveTextContent(
@@ -123,12 +125,12 @@ describe("VerificationForm", () => {
     );
   });
 
-  it("shows a warning and no form when the telephone query param is missing", () => {
+  it("shows a warning and no form when the email query param is missing", () => {
     useSearchParamsMock.mockReturnValue(new URLSearchParams());
 
     render(<VerificationForm />);
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Numéro manquant");
-    expect(screen.queryByLabelText("Code reçu par SMS")).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Email manquant");
+    expect(screen.queryByLabelText("Code reçu par email")).not.toBeInTheDocument();
   });
 });

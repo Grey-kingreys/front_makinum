@@ -31,7 +31,7 @@ function describeOtpError(error: unknown): string {
 export function VerificationForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const telephone = searchParams.get("telephone") ?? "";
+  const email = searchParams.get("email") ?? "";
 
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -51,16 +51,16 @@ export function VerificationForm() {
   async function handleVerify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const cleanCode = code.trim();
-    if (!telephone || cleanCode.length !== 6) return;
+    if (!email || cleanCode.length !== 6) return;
 
     setVerifying(true);
     setError(null);
     setResendMessage(null);
     try {
-      const response = await apiFetch<MessageResponse>("/auth/otp/verify-phone", {
+      const response = await apiFetch<MessageResponse>("/auth/otp/verify-email", {
         method: "POST",
         skipAuth: true,
-        body: { telephone, code: cleanCode },
+        body: { email, code: cleanCode },
       });
       setSuccessMessage(response.message);
       redirectTimer.current = setTimeout(() => {
@@ -74,7 +74,7 @@ export function VerificationForm() {
   }
 
   async function handleResend() {
-    if (!telephone) return;
+    if (!email) return;
     setResending(true);
     setError(null);
     setResendMessage(null);
@@ -82,7 +82,7 @@ export function VerificationForm() {
       const response = await apiFetch<MessageResponse>("/auth/otp/request", {
         method: "POST",
         skipAuth: true,
-        body: { telephone, usage: "VERIFY_PHONE" },
+        body: { email, usage: "VERIFY_EMAIL" },
       });
       setResendMessage(response.message);
     } catch (err) {
@@ -92,14 +92,14 @@ export function VerificationForm() {
     }
   }
 
-  if (!telephone) {
+  if (!email) {
     return (
       <div>
         <h1 className="mb-1.5 font-display text-[27px] font-bold tracking-tight text-ink">
-          Vérifie ton numéro
+          Vérifie ton email
         </h1>
         <Alert variant="danger" className="mb-5">
-          Numéro manquant. Retourne à{" "}
+          Email manquant. Retourne à{" "}
           <Link href="/inscription" className="font-medium underline">
             l&apos;inscription
           </Link>{" "}
@@ -116,10 +116,10 @@ export function VerificationForm() {
   return (
     <div>
       <h1 className="mb-1.5 font-display text-[27px] font-bold tracking-tight text-ink">
-        Vérifie ton numéro
+        Vérifie ton email
       </h1>
       <p className="mb-6 text-[14.5px] text-brand-subtle">
-        Code à 6 chiffres envoyé au {telephone}.
+        Code à 6 chiffres envoyé par email à {email}.
       </p>
 
       {successMessage ? (
@@ -140,7 +140,7 @@ export function VerificationForm() {
 
       <form onSubmit={handleVerify} className="flex flex-col gap-[14px]">
         <Input
-          label="Code reçu par SMS"
+          label="Code reçu par email"
           name="code"
           inputMode="numeric"
           pattern="[0-9]*"

@@ -143,6 +143,14 @@ describe("Sidebar", () => {
     expect(link.textContent).toBe("Ma demande");
   });
 
+  it("falls back to the email in the user card when telephone is null", async () => {
+    await renderSidebar(
+      makeUser({ telephone: null, telephoneVerifie: false, email: "fatoumata@exemple.gn", emailVerifie: true }),
+    );
+
+    expect(screen.getByText("fatoumata@exemple.gn")).toBeInTheDocument();
+  });
+
   it("shows the ADMIN nav (File de modération, Vendeurs) for an admin", async () => {
     await renderSidebar(makeUser({ role: "ADMIN" }));
 

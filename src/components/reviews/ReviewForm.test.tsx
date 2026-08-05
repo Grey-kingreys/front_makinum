@@ -124,6 +124,24 @@ describe("ReviewForm", () => {
     expect(screen.getByRole("button", { name: "Publier mon avis" })).toBeInTheDocument();
   });
 
+  it("lights up every star up to the selected note, not just the clicked one", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await user.click(screen.getByRole("radio", { name: "3 étoiles" }));
+
+    const labels = screen.getAllByRole("radio").map((radio) => radio.closest("label"));
+    expect(labels).toHaveLength(5);
+    labels.forEach((label, index) => {
+      const noteForStar = index + 1;
+      if (noteForStar <= 3) {
+        expect(label).toHaveClass("border-accent");
+      } else {
+        expect(label).toHaveClass("border-border-strong");
+      }
+    });
+  });
+
   it("calls onCancel when « Plus tard » is clicked", async () => {
     const user = userEvent.setup();
     const { onCancel } = renderForm();

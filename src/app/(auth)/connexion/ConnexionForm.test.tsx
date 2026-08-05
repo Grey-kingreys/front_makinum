@@ -34,8 +34,8 @@ const DEMO_USER: PublicUser = {
   nom: "Fatoumata Bangoura",
   telephone: "+224622000000",
   telephoneVerifie: true,
-  email: null,
-  emailVerifie: false,
+  email: "fatoumata@exemple.gn",
+  emailVerifie: true,
   role: "ACHETEUR",
   statutVendeur: "LIBRE",
   statutCompte: "ACTIF",
@@ -71,7 +71,7 @@ describe("ConnexionForm", () => {
 
     renderPage();
 
-    await user.type(screen.getByLabelText("Numéro ou email"), "+224622000000");
+    await user.type(screen.getByLabelText("Email ou numéro vérifié"), "+224622000000");
     await user.type(screen.getByLabelText("Mot de passe"), "secret123");
     await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
@@ -98,7 +98,7 @@ describe("ConnexionForm", () => {
 
     renderPage();
 
-    await user.type(screen.getByLabelText("Numéro ou email"), "+224622000000");
+    await user.type(screen.getByLabelText("Email ou numéro vérifié"), "+224622000000");
     await user.type(screen.getByLabelText("Mot de passe"), "wrong");
     await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
@@ -108,14 +108,14 @@ describe("ConnexionForm", () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
-  it("shows a link to /verification when the phone is not verified", async () => {
+  it("shows a link to /verification when the email is not verified (EMAIL_NOT_VERIFIED, 403)", async () => {
     const user = userEvent.setup();
     const fetchMock = fetch as unknown as FetchMock;
     fetchMock.mockResolvedValueOnce(
       jsonResponse(
         {
-          code: "PHONE_NOT_VERIFIED",
-          message: "Numéro de téléphone non vérifié : validez le code reçu par SMS",
+          code: "EMAIL_NOT_VERIFIED",
+          message: "Adresse email non vérifiée : validez le code reçu par email",
         },
         { ok: false, status: 403 },
       ),
@@ -123,14 +123,15 @@ describe("ConnexionForm", () => {
 
     renderPage();
 
-    await user.type(screen.getByLabelText("Numéro ou email"), "+224622000000");
+    await user.type(screen.getByLabelText("Email ou numéro vérifié"), "fatoumata@exemple.gn");
     await user.type(screen.getByLabelText("Mot de passe"), "secret123");
     await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
-    const verifyLink = await screen.findByRole("link", { name: "Vérifier mon numéro" });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Adresse email non vérifiée");
+    const verifyLink = screen.getByRole("link", { name: "Vérifier mon email" });
     expect(verifyLink).toHaveAttribute(
       "href",
-      "/verification?telephone=%2B224622000000",
+      "/verification?email=fatoumata%40exemple.gn",
     );
   });
 
@@ -146,7 +147,7 @@ describe("ConnexionForm", () => {
 
     renderPage();
 
-    await user.type(screen.getByLabelText("Numéro ou email"), "+224622000000");
+    await user.type(screen.getByLabelText("Email ou numéro vérifié"), "+224622000000");
     await user.type(screen.getByLabelText("Mot de passe"), "secret123");
     await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
@@ -165,7 +166,7 @@ describe("ConnexionForm", () => {
 
     renderPage();
 
-    await user.type(screen.getByLabelText("Numéro ou email"), "+224622000000");
+    await user.type(screen.getByLabelText("Email ou numéro vérifié"), "+224622000000");
     await user.type(screen.getByLabelText("Mot de passe"), "secret123");
     await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
