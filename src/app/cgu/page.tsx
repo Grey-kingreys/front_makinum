@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     "Conditions générales d'utilisation de Makinum : rôle de facilitateur, comptes, obligations des vendeurs et des acheteurs, modération, responsabilité et droit applicable.",
 };
 
-const LAST_UPDATED = "2026-08-04";
+const LAST_UPDATED = "2026-08-05";
 
 const SOMMAIRE: LegalTocEntry[] = [
   { id: "objet", label: "Objet du service" },
@@ -66,9 +66,19 @@ export default function CguPage() {
 
       <LegalSection id="comptes" title="3. Comptes utilisateurs">
         <p>
-          La création d&apos;un compte nécessite un numéro de téléphone valide, vérifié par un code à usage
-          unique (OTP) envoyé par SMS. Un compte est strictement personnel : une même personne ne peut
-          détenir qu&apos;un seul compte, associé à un seul numéro de téléphone.
+          La création d&apos;un compte se fait avec une adresse e-mail et un mot de passe. L&apos;adresse
+          e-mail est vérifiée par un code à usage unique (OTP) envoyé par e-mail. Un compte est strictement
+          personnel : une même personne ne peut détenir qu&apos;un seul compte, associé à une seule adresse
+          e-mail.
+        </p>
+        <p>
+          Un numéro de téléphone valide est en outre exigé des utilisateurs souhaitant vendre sur Makinum :
+          il sert de canal de contact (appel téléphonique ou WhatsApp) par lequel les acheteurs intéressés
+          par leurs annonces peuvent les joindre, comme précisé dans la{" "}
+          <a href="/confidentialite" className="underline">
+            politique de confidentialité
+          </a>
+          .
         </p>
         <p>
           L&apos;utilisateur s&apos;engage à fournir des informations exactes lors de son inscription et à

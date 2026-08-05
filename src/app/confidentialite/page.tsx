@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     "Politique de confidentialité de Makinum : données collectées, usages, absence de données bancaires, suppression des métadonnées EXIF des photos, durée de conservation et droits des utilisateurs.",
 };
 
-const LAST_UPDATED = "2026-08-04";
+const LAST_UPDATED = "2026-08-05";
 
 const SOMMAIRE: LegalTocEntry[] = [
   { id: "donnees-collectees", label: "Données collectées" },
@@ -31,8 +31,15 @@ export default function ConfidentialitePage() {
         <p>Pour fonctionner, Makinum collecte les données suivantes :</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>votre nom (tel que renseigné à l&apos;inscription) ;</li>
-          <li>votre numéro de téléphone, utilisé comme identifiant de compte et vérifié par SMS (OTP) ;</li>
-          <li>votre adresse e-mail, si vous choisissez d&apos;en renseigner une (optionnel) ;</li>
+          <li>
+            votre adresse e-mail, utilisée comme identifiant de compte et vérifiée par un code à usage
+            unique (OTP) envoyé par e-mail ;
+          </li>
+          <li>
+            votre numéro de téléphone : optionnel pour un compte acheteur, obligatoire pour un compte
+            vendeur, où il sert de canal de contact direct (appel ou WhatsApp) avec les acheteurs
+            intéressés par ses annonces ;
+          </li>
           <li>
             votre position géographique approximative, pour vous montrer et vous proposer des annonces
             situées près de chez vous ;
@@ -48,15 +55,23 @@ export default function ConfidentialitePage() {
         <p>Ces données sont utilisées exclusivement pour :</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>mettre en relation les utilisateurs sur la base de leur proximité géographique ;</li>
-          <li>vérifier votre numéro de téléphone à l&apos;inscription et lors de la récupération de compte (OTP) ;</li>
+          <li>
+            vérifier votre adresse e-mail à l&apos;inscription et lors de la récupération de compte, au
+            moyen d&apos;un code à usage unique (OTP) ;
+          </li>
           <li>
             vous envoyer des notifications utiles au service (confirmation, sécurité du compte, activité
-            liée à vos annonces) ;
+            liée à vos annonces), principalement par e-mail ;
           </li>
           <li>assurer la modération des annonces, avis et signalements décrite dans les CGU.</li>
         </ul>
         <p>
           Vos données ne sont ni vendues, ni louées, ni partagées à des fins publicitaires avec des tiers.
+        </p>
+        <p>
+          L&apos;envoi des e-mails de vérification et de notification est assuré par un prestataire
+          technique spécialisé, qui agit en tant que sous-traitant de Makinum pour cette seule finalité et
+          n&apos;a aucun autre usage de vos données.
         </p>
       </LegalSection>
 
@@ -89,10 +104,12 @@ export default function ConfidentialitePage() {
           dehors de l&apos;application.
         </p>
         <p>
-          Pour permettre cette mise en relation, le numéro de téléphone d&apos;un utilisateur peut être
-          rendu visible à un autre utilisateur avec lequel il entre en contact au sujet d&apos;une annonce.
-          C&apos;est un fonctionnement assumé de la version actuelle de Makinum, dont l&apos;utilisateur est
-          informé dès son inscription : il reste libre de ne pas donner suite à un contact.
+          Pour permettre cette mise en relation, le numéro de téléphone d&apos;un compte vendeur —
+          obligatoire pour ce type de compte — est communiqué aux acheteurs qui le contactent au sujet
+          d&apos;une de ses annonces, comme canal de contact direct (appel téléphonique ou WhatsApp).
+          C&apos;est un fonctionnement assumé de la version actuelle de Makinum, dont l&apos;utilisateur
+          vendeur est informé dès son inscription : il reste libre, comme l&apos;acheteur, de ne pas donner
+          suite à un contact.
         </p>
       </LegalSection>
 
