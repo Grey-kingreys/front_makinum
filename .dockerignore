@@ -1,0 +1,33 @@
+# Contexte de build de l'image PWA (voir Dockerfile).
+
+# Dépendances : réinstallées par `npm ci` dans l'image.
+node_modules
+
+# Artefacts de build reconstruits par le stage `build`.
+.next
+out
+build
+*.tsbuildinfo
+
+# Secrets — ne doivent JAMAIS entrer dans une couche d'image.
+# Rappel : NEXT_PUBLIC_API_URL est fournie en ARG de build, pas par un .env.
+.env
+.env.*
+
+# Historique git et métadonnées.
+.git
+.gitignore
+.dockerignore
+
+# Tests et couverture : l'image de production n'exécute pas les suites.
+coverage
+
+# Outillage de dev / IDE / OS
+.vscode
+.idea
+*.log
+.DS_Store
+README.md
+AGENTS.md
+CLAUDE.md
+Dockerfile
