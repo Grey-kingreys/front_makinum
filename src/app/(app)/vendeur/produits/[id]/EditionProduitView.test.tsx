@@ -15,6 +15,7 @@ const {
   addProductPhotoMock,
   deleteProductPhotoMock,
   reorderProductPhotosMock,
+  resizeImageFileMock,
 } = vi.hoisted(() => ({
   getProductMock: vi.fn(),
   listCategoriesMock: vi.fn(),
@@ -22,6 +23,7 @@ const {
   addProductPhotoMock: vi.fn(),
   deleteProductPhotoMock: vi.fn(),
   reorderProductPhotosMock: vi.fn(),
+  resizeImageFileMock: vi.fn(),
 }));
 
 vi.mock("@/lib/products/api", () => ({ getProduct: getProductMock }));
@@ -37,6 +39,10 @@ vi.mock("@/lib/products/vendor-api", async () => {
     reorderProductPhotos: reorderProductPhotosMock,
   };
 });
+// Le redimensionnement lui-même (createImageBitmap/canvas) est couvert par
+// src/lib/products/resize-image.test.ts — ici on vérifie seulement le
+// câblage : appelé avant addProductPhoto, avec le fichier qu'il renvoie.
+vi.mock("@/lib/products/resize-image", () => ({ resizeImageFile: resizeImageFileMock }));
 
 const CATEGORIES = [
   { id: "c1", nom: "Mode & tissus", slug: "mode-tissus", parentId: null },
@@ -89,6 +95,10 @@ describe("EditionProduitView", () => {
     addProductPhotoMock.mockReset();
     deleteProductPhotoMock.mockReset();
     reorderProductPhotosMock.mockReset();
+    resizeImageFileMock.mockReset();
+    // Par défaut, passe le fichier tel quel (comportement de repli réel de
+    // resize-image.ts quand aucun test ne cherche à observer autre chose).
+    resizeImageFileMock.mockImplementation((file: File) => Promise.resolve(file));
     listCategoriesMock.mockResolvedValue(CATEGORIES);
   });
 
@@ -200,6 +210,62 @@ describe("EditionProduitView", () => {
 
     expect(await screen.findByText("1 / 10")).toBeInTheDocument();
     expect(await screen.findByText(/Image refusée : format non supporté/)).toBeInTheDocument();
+  });
+
+  it("resizes each file before uploading and sends the resized file, not the original, to addProductPhoto", async () => {
+    const user = userEvent.setup();
+    getProductMock.mockResolvedValueOnce(makeProduct({ photos: [] }));
+    const original = new File(["binary"], "photo.jpg", { type: "image/jpeg" });
+    const resized = new File(["smaller-binary"], "photo.jpg", { type: "image/jpeg" });
+    resizeImageFileMock.mockResolvedValueOnce(resized);
+    addProductPhotoMock.mockResolvedValueOnce(makePhoto({ id: "ph-new", ordre: 1 }));
+    renderView();
+
+    await screen.findByText("0 / 10");
+
+    const input = screen.getByLabelText("Ajouter des photos");
+    await user.upload(input, [original]);
+
+    await waitFor(() => expect(addProductPhotoMock).toHaveBeenCalledTimes(1));
+    expect(resizeImageFileMock).toHaveBeenCalledWith(original);
+    // `File`/`Blob` compare structurally-equal-but-empty under Vitest's deep
+    // equality (their content isn't an enumerable own property), so identity
+    // (`toBe`) is the only reliable way to assert *which* File instance was
+    // actually transmitted.
+    const [, transmittedFile] = addProductPhotoMock.mock.calls[0] as [string, File];
+    expect(transmittedFile).toBe(resized);
+    expect(transmittedFile).not.toBe(original);
+  });
+
+  it("shows a specific message and a Retry button when the upload fails before any HTTP response, and Retry resends it", async () => {
+    const user = userEvent.setup();
+    getProductMock.mockResolvedValueOnce(makeProduct({ photos: [] }));
+    addProductPhotoMock
+      .mockRejectedValueOnce(
+        new ApiError(0, "Impossible de joindre le serveur Makinum.", "NETWORK_ERROR"),
+      )
+      .mockResolvedValueOnce(makePhoto({ id: "ph-new", ordre: 1 }));
+    renderView();
+
+    await screen.findByText("0 / 10");
+
+    const file = new File(["binary"], "photo.jpg", { type: "image/jpeg" });
+    const input = screen.getByLabelText("Ajouter des photos");
+    await user.upload(input, [file]);
+
+    expect(
+      await screen.findByText(
+        "Envoi interrompu — vérifie ta connexion, ou réessaie avec une photo plus légère.",
+      ),
+    ).toBeInTheDocument();
+    const retryButton = screen.getByRole("button", { name: "Réessayer" });
+    expect(retryButton).toBeInTheDocument();
+
+    await user.click(retryButton);
+
+    await waitFor(() => expect(addProductPhotoMock).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("1 / 10")).toBeInTheDocument();
+    expect(screen.queryByText(/Envoi interrompu/)).not.toBeInTheDocument();
   });
 
   it("disables the upload input and shows a message once the 10-photo limit is reached", async () => {

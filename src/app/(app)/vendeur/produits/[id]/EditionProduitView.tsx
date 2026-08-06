@@ -9,6 +9,7 @@ import { ApiError } from "@/lib/api";
 import { listCategories } from "@/lib/categories/api";
 import type { CategoryListItem } from "@/lib/categories/types";
 import { getProduct } from "@/lib/products/api";
+import { resizeImageFile } from "@/lib/products/resize-image";
 import type { ProductView } from "@/lib/products/types";
 import {
   addProductPhoto,
@@ -20,6 +21,8 @@ import {
 
 interface PendingUpload {
   key: string;
+  /** Fichier d'origine (avant redimensionnement) — nécessaire pour « Réessayer ». */
+  file: File;
   previewUrl: string;
   status: "uploading" | "error";
   error?: string;
@@ -43,6 +46,13 @@ function describeUpdateError(error: unknown): string {
 
 function describePhotoError(error: unknown): string {
   if (error instanceof ApiError) {
+    // apiFetch (src/lib/api.ts) lève ce code quand `fetch` lui-même a rejeté
+    // — la requête n'a jamais atteint de réponse HTTP (connexion coupée en
+    // cours d'envoi, réseau absent…). Un code générique serait trompeur ici :
+    // ce n'est pas le serveur qui a refusé la photo.
+    if (error.code === "NETWORK_ERROR") {
+      return "Envoi interrompu — vérifie ta connexion, ou réessaie avec une photo plus légère.";
+    }
     return error.message || "Envoi impossible. Réessaie.";
   }
   return "Envoi impossible. Réessaie.";
@@ -118,6 +128,32 @@ export function EditionProduitView({ productId }: EditionProduitViewProps) {
     }
   }
 
+  /**
+   * Redimensionne (T40 — optimisation de transport, repli silencieux sur le
+   * fichier d'origine en cas d'échec, voir resize-image.ts) puis envoie un
+   * fichier ; partagé entre l'envoi initial et « Réessayer ».
+   */
+  async function uploadPendingFile(key: string, file: File) {
+    try {
+      const fileToSend = await resizeImageFile(file);
+      const photo = await addProductPhoto(productId, fileToSend);
+      setProduct((prev) => (prev ? { ...prev, photos: [...prev.photos, photo] } : prev));
+      setPendingUploads((prev) => {
+        const found = prev.find((upload) => upload.key === key);
+        if (found) URL.revokeObjectURL(found.previewUrl);
+        return prev.filter((upload) => upload.key !== key);
+      });
+    } catch (err) {
+      setPendingUploads((prev) =>
+        prev.map((upload) =>
+          upload.key === key
+            ? { ...upload, status: "error", error: describePhotoError(err) }
+            : upload,
+        ),
+      );
+    }
+  }
+
   /** Envoi séquentiel : un fichier à la fois, indicateur (et erreur) propre à chacun. */
   async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
     const files = event.target.files;
@@ -127,26 +163,19 @@ export function EditionProduitView({ productId }: EditionProduitViewProps) {
     for (const file of Array.from(files)) {
       const key = `${file.name}-${file.size}-${Date.now()}-${Math.random()}`;
       const previewUrl = URL.createObjectURL(file);
-      setPendingUploads((prev) => [...prev, { key, previewUrl, status: "uploading" }]);
-
-      try {
-        const photo = await addProductPhoto(productId, file);
-        setProduct((prev) => (prev ? { ...prev, photos: [...prev.photos, photo] } : prev));
-        setPendingUploads((prev) => {
-          const found = prev.find((upload) => upload.key === key);
-          if (found) URL.revokeObjectURL(found.previewUrl);
-          return prev.filter((upload) => upload.key !== key);
-        });
-      } catch (err) {
-        setPendingUploads((prev) =>
-          prev.map((upload) =>
-            upload.key === key
-              ? { ...upload, status: "error", error: describePhotoError(err) }
-              : upload,
-          ),
-        );
-      }
+      setPendingUploads((prev) => [...prev, { key, file, previewUrl, status: "uploading" }]);
+      await uploadPendingFile(key, file);
     }
+  }
+
+  /** Relance l'envoi (redimensionnement compris) du fichier d'une tuile en erreur. */
+  function retryPendingUpload(key: string) {
+    const upload = pendingUploads.find((item) => item.key === key);
+    if (!upload) return;
+    setPendingUploads((prev) =>
+      prev.map((item) => (item.key === key ? { ...item, status: "uploading", error: undefined } : item)),
+    );
+    void uploadPendingFile(key, upload.file);
   }
 
   function dismissPendingUpload(key: string) {
@@ -338,6 +367,13 @@ export function EditionProduitView({ productId }: EditionProduitViewProps) {
                 {upload.status === "error" ? (
                   <div className="absolute inset-x-0 bottom-0 bg-danger px-2 py-1 text-[11px] text-white">
                     {upload.error}{" "}
+                    <button
+                      type="button"
+                      onClick={() => retryPendingUpload(upload.key)}
+                      className="underline"
+                    >
+                      Réessayer
+                    </button>{" "}
                     <button
                       type="button"
                       onClick={() => dismissPendingUpload(upload.key)}
