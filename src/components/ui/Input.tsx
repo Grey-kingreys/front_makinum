@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -23,6 +23,8 @@ export interface InputProps extends Omit<ComponentProps<"input">, "id"> {
   /** Message d'erreur — remplace le hint et bascule le champ en état invalide. */
   error?: string;
   containerClassName?: string;
+  /** Élément affiché dans le champ, aligné à droite (ex. bouton toggle mot de passe). */
+  endAdornment?: ReactNode;
 }
 
 /**
@@ -37,6 +39,7 @@ export function Input({
   error,
   className,
   containerClassName,
+  endAdornment,
   ref,
   ...props
 }: InputProps) {
@@ -52,18 +55,24 @@ export function Input({
       <label htmlFor={inputId} className="text-[13px] text-brand-muted">
         {label}
       </label>
-      <input
-        ref={ref}
-        id={inputId}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy}
-        className={cn(
-          "w-full rounded-md border bg-white px-[14px] py-[14px] text-[15px] text-ink outline-none transition-colors placeholder:text-brand-placeholder focus-visible:shadow-focus-brand",
-          error ? "border-danger focus:border-danger" : "border-border-strong focus:border-brand",
-          className,
-        )}
-        {...props}
-      />
+      <div className="relative">
+        <input
+          ref={ref}
+          id={inputId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+          className={cn(
+            "w-full rounded-md border bg-white px-[14px] py-[14px] text-[15px] text-ink outline-none transition-colors placeholder:text-brand-placeholder focus-visible:shadow-focus-brand",
+            error ? "border-danger focus:border-danger" : "border-border-strong focus:border-brand",
+            endAdornment ? "pr-11" : "",
+            className,
+          )}
+          {...props}
+        />
+        {endAdornment ? (
+          <div className="absolute inset-y-0 right-0 flex items-center pr-1.5">{endAdornment}</div>
+        ) : null}
+      </div>
       {error ? (
         <p id={`${inputId}-error`} className="text-[12.5px] text-danger">
           {error}

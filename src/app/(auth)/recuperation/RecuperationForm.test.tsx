@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -124,6 +124,7 @@ describe("RecuperationForm", () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ message: "Mot de passe réinitialisé" }));
     await user.type(screen.getByLabelText("Code reçu"), "654321");
     await user.type(screen.getByLabelText("Nouveau mot de passe"), "nouveauSecret123");
+    await user.type(screen.getByLabelText("Confirmer le nouveau mot de passe"), "nouveauSecret123");
     await user.click(screen.getByRole("button", { name: "Réinitialiser le mot de passe" }));
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/connexion?recupere=1"));
@@ -149,9 +150,51 @@ describe("RecuperationForm", () => {
     );
     await user.type(screen.getByLabelText("Code reçu"), "000000");
     await user.type(screen.getByLabelText("Nouveau mot de passe"), "nouveauSecret123");
+    await user.type(screen.getByLabelText("Confirmer le nouveau mot de passe"), "nouveauSecret123");
     await user.click(screen.getByRole("button", { name: "Réinitialiser le mot de passe" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Code invalide ou expiré.");
     expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("step 2: blocks submission with a per-field error when the passwords do not match, without calling the API", async () => {
+    const user = userEvent.setup();
+    const fetchMock = fetch as unknown as FetchMock;
+
+    renderForm();
+    await goToStepTwo(user, fetchMock);
+
+    await user.type(screen.getByLabelText("Code reçu"), "654321");
+    await user.type(screen.getByLabelText("Nouveau mot de passe"), "nouveauSecret123");
+    await user.type(screen.getByLabelText("Confirmer le nouveau mot de passe"), "autreChose123");
+    await user.click(screen.getByRole("button", { name: "Réinitialiser le mot de passe" }));
+
+    expect(
+      await screen.findByText("Les mots de passe ne correspondent pas."),
+    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("step 2: toggles the new-password field between masked and visible via the eye button", async () => {
+    const user = userEvent.setup();
+    const fetchMock = fetch as unknown as FetchMock;
+
+    renderForm();
+    await goToStepTwo(user, fetchMock);
+
+    const passwordField = screen.getByLabelText("Nouveau mot de passe");
+    // Deux champs mot de passe sont présents simultanément (nouveau +
+    // confirmation) : on cible le bouton de bascule propre à ce champ.
+    const toggle = within(passwordField.parentElement as HTMLElement).getByRole("button");
+
+    expect(passwordField).toHaveAttribute("type", "password");
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(toggle);
+
+    expect(passwordField).toHaveAttribute("type", "text");
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(toggle).toHaveAttribute("aria-label", "Masquer le mot de passe");
   });
 });

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { Alert, Button, Input } from "@/components/ui";
+import { Alert, Button, Input, PasswordInput } from "@/components/ui";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -36,9 +36,11 @@ export function RecuperationForm() {
   const [identifiant, setIdentifiant] = useState("");
   const [code, setCode] = useState("");
   const [nouveauMotDePasse, setNouveauMotDePasse] = useState("");
+  const [confirmationMotDePasse, setConfirmationMotDePasse] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [confirmationError, setConfirmationError] = useState<string | null>(null);
 
   // Déjà connecté (session restaurée par l'AuthProvider) : direction /dashboard.
   useEffect(() => {
@@ -74,6 +76,12 @@ export function RecuperationForm() {
     const cleanCode = code.trim();
     if (!cleanCode || !nouveauMotDePasse) return;
 
+    if (nouveauMotDePasse !== confirmationMotDePasse) {
+      setConfirmationError("Les mots de passe ne correspondent pas.");
+      return;
+    }
+    setConfirmationError(null);
+
     setSubmitting(true);
     setError(null);
     try {
@@ -97,6 +105,8 @@ export function RecuperationForm() {
     setStep("identifiant");
     setCode("");
     setNouveauMotDePasse("");
+    setConfirmationMotDePasse("");
+    setConfirmationError(null);
     setError(null);
     setInfoMessage(null);
   }
@@ -135,15 +145,31 @@ export function RecuperationForm() {
             onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
             required
           />
-          <Input
+          <PasswordInput
             label="Nouveau mot de passe"
             name="nouveauMotDePasse"
-            type="password"
             autoComplete="new-password"
             placeholder="••••••••"
             minLength={8}
             value={nouveauMotDePasse}
-            onChange={(event) => setNouveauMotDePasse(event.target.value)}
+            onChange={(event) => {
+              setNouveauMotDePasse(event.target.value);
+              setConfirmationError(null);
+            }}
+            required
+          />
+          <PasswordInput
+            label="Confirmer le nouveau mot de passe"
+            name="confirmationMotDePasse"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            minLength={8}
+            value={confirmationMotDePasse}
+            onChange={(event) => {
+              setConfirmationMotDePasse(event.target.value);
+              setConfirmationError(null);
+            }}
+            error={confirmationError ?? undefined}
             required
           />
           <Button type="submit" size="lg" disabled={submitting} aria-busy={submitting}>

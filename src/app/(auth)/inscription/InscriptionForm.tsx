@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { Alert, Button, Input } from "@/components/ui";
+import { Alert, Button, Input, PasswordInput } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -46,11 +46,13 @@ export function InscriptionForm() {
 
   const [email, setEmail] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
+  const [confirmationMotDePasse, setConfirmationMotDePasse] = useState("");
   const [nom, setNom] = useState("");
   const [telephone, setTelephone] = useState("");
   const [role, setRole] = useState<RolePublic>("ACHETEUR");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmationError, setConfirmationError] = useState<string | null>(null);
 
   const telephoneRequired = role === "VENDEUR";
 
@@ -68,6 +70,12 @@ export function InscriptionForm() {
     const cleanTelephone = telephone.trim();
     if (!cleanEmail || !cleanNom || !motDePasse) return;
     if (telephoneRequired && !cleanTelephone) return;
+
+    if (motDePasse !== confirmationMotDePasse) {
+      setConfirmationError("Les mots de passe ne correspondent pas.");
+      return;
+    }
+    setConfirmationError(null);
 
     setSubmitting(true);
     setError(null);
@@ -116,15 +124,31 @@ export function InscriptionForm() {
           onChange={(event) => setEmail(event.target.value)}
           required
         />
-        <Input
+        <PasswordInput
           label="Mot de passe"
           name="motDePasse"
-          type="password"
           autoComplete="new-password"
           placeholder="••••••••"
           minLength={8}
           value={motDePasse}
-          onChange={(event) => setMotDePasse(event.target.value)}
+          onChange={(event) => {
+            setMotDePasse(event.target.value);
+            setConfirmationError(null);
+          }}
+          required
+        />
+        <PasswordInput
+          label="Confirmer le mot de passe"
+          name="confirmationMotDePasse"
+          autoComplete="new-password"
+          placeholder="••••••••"
+          minLength={8}
+          value={confirmationMotDePasse}
+          onChange={(event) => {
+            setConfirmationMotDePasse(event.target.value);
+            setConfirmationError(null);
+          }}
+          error={confirmationError ?? undefined}
           required
         />
         <Input

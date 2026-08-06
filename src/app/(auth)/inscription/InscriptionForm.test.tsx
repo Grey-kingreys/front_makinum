@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -49,6 +49,7 @@ function renderForm() {
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("Email"), "fatoumata@exemple.gn");
   await user.type(screen.getByLabelText("Mot de passe"), "secret123");
+  await user.type(screen.getByLabelText("Confirmer le mot de passe"), "secret123");
   await user.type(screen.getByLabelText("Nom affiché"), "Fatoumata Bangoura");
 }
 
@@ -184,6 +185,50 @@ describe("InscriptionForm", () => {
     await user.click(screen.getByRole("button", { name: "Recevoir mon code" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Cet email est déjà utilisé.");
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("toggles the password field between masked and visible via the eye button", async () => {
+    const user = userEvent.setup();
+
+    renderForm();
+    const passwordField = screen.getByLabelText("Mot de passe");
+    // Deux champs mot de passe sont présents simultanément (Mot de passe +
+    // confirmation) : on cible le bouton de bascule propre à ce champ.
+    const toggle = within(passwordField.parentElement as HTMLElement).getByRole("button");
+
+    expect(passwordField).toHaveAttribute("type", "password");
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(toggle).toHaveAttribute("aria-label", "Afficher le mot de passe");
+
+    await user.click(toggle);
+
+    expect(passwordField).toHaveAttribute("type", "text");
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(toggle).toHaveAttribute("aria-label", "Masquer le mot de passe");
+
+    await user.click(toggle);
+
+    expect(passwordField).toHaveAttribute("type", "password");
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(toggle).toHaveAttribute("aria-label", "Afficher le mot de passe");
+  });
+
+  it("blocks submission with a per-field error when the passwords do not match, without calling the API", async () => {
+    const user = userEvent.setup();
+    const fetchMock = fetch as unknown as FetchMock;
+
+    renderForm();
+    await user.type(screen.getByLabelText("Email"), "fatoumata@exemple.gn");
+    await user.type(screen.getByLabelText("Mot de passe"), "secret123");
+    await user.type(screen.getByLabelText("Confirmer le mot de passe"), "autreChose123");
+    await user.type(screen.getByLabelText("Nom affiché"), "Fatoumata Bangoura");
+    await user.click(screen.getByRole("button", { name: "Recevoir mon code" }));
+
+    expect(
+      await screen.findByText("Les mots de passe ne correspondent pas."),
+    ).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(pushMock).not.toHaveBeenCalled();
   });
 

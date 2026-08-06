@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { Alert, Button, Input } from "@/components/ui";
+import { Alert, Button, Input, PasswordInput } from "@/components/ui";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -120,10 +120,9 @@ export function ConnexionForm() {
           onChange={(event) => setIdentifiant(event.target.value)}
           required
         />
-        <Input
+        <PasswordInput
           label="Mot de passe"
           name="motDePasse"
-          type="password"
           autoComplete="current-password"
           placeholder="••••••••"
           value={motDePasse}

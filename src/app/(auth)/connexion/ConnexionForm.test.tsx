@@ -185,6 +185,31 @@ describe("ConnexionForm", () => {
     );
   });
 
+  it("toggles the password field between masked and visible via the eye button", async () => {
+    const user = userEvent.setup();
+
+    renderPage();
+    const passwordField = screen.getByLabelText("Mot de passe");
+    const toggle = screen.getByRole("button", { name: "Afficher le mot de passe" });
+
+    expect(passwordField).toHaveAttribute("type", "password");
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(toggle);
+
+    expect(passwordField).toHaveAttribute("type", "text");
+    const toggleAfter = screen.getByRole("button", { name: "Masquer le mot de passe" });
+    expect(toggleAfter).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(toggleAfter);
+
+    expect(passwordField).toHaveAttribute("type", "password");
+    expect(screen.getByRole("button", { name: "Afficher le mot de passe" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
   it("shows a success banner when redirected from /recuperation", () => {
     useSearchParamsMock.mockReturnValue(new URLSearchParams("recupere=1"));
 
