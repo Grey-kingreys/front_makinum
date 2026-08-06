@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -87,7 +87,6 @@ describe("VendeurDemandesView", () => {
 
   it("closes a demande as aboutie after confirmation, POSTing the right payload and moving it to Clôturées", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     listPurchaseRequestsMock.mockResolvedValueOnce([makeDemande({ id: "d1", statut: "ENVOYEE" })]);
     closePurchaseRequestMock.mockResolvedValueOnce(
       makeDemande({ id: "d1", statut: "CLOTUREE", resultat: "ABOUTIE" }),
@@ -101,7 +100,10 @@ describe("VendeurDemandesView", () => {
 
     await user.click(screen.getByRole("button", { name: "Clôturer · aboutie" }));
 
-    expect(window.confirm).toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    expect(closePurchaseRequestMock).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Clôturer" }));
+
     await waitFor(() => expect(closePurchaseRequestMock).toHaveBeenCalledWith("d1", "ABOUTIE"));
     expect(await screen.findByText("Clôturées (1)")).toBeInTheDocument();
     expect(screen.queryByText("Envoyées (1)")).not.toBeInTheDocument();
@@ -110,7 +112,6 @@ describe("VendeurDemandesView", () => {
 
   it("closes a demande as annulee after confirmation, POSTing the right payload", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     listPurchaseRequestsMock.mockResolvedValueOnce([makeDemande({ id: "d1", statut: "ENVOYEE" })]);
     closePurchaseRequestMock.mockResolvedValueOnce(
       makeDemande({ id: "d1", statut: "CLOTUREE", resultat: "ANNULEE" }),
@@ -123,6 +124,8 @@ describe("VendeurDemandesView", () => {
     await screen.findByText("Envoyées (1)");
 
     await user.click(screen.getByRole("button", { name: "Clôturer · annulée" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Clôturer" }));
 
     await waitFor(() => expect(closePurchaseRequestMock).toHaveBeenCalledWith("d1", "ANNULEE"));
     expect(await screen.findByText("annulée")).toBeInTheDocument();
@@ -130,13 +133,15 @@ describe("VendeurDemandesView", () => {
 
   it("does not close when the confirmation is declined", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(false);
     listPurchaseRequestsMock.mockResolvedValueOnce([makeDemande({ id: "d1", statut: "ENVOYEE" })]);
 
     renderView();
     await screen.findByText("Envoyées (1)");
     await user.click(screen.getByRole("button", { name: "Clôturer · aboutie" }));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: "Annuler" }));
 
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(closePurchaseRequestMock).not.toHaveBeenCalled();
   });
 

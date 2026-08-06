@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { Alert, Badge, Button, type BadgeVariant } from "@/components/ui";
+import { Alert, Badge, Button, ConfirmDialog, type BadgeVariant } from "@/components/ui";
 import { formatDate } from "@/lib/format";
 import {
   describeReportError,
@@ -197,6 +197,7 @@ export function ModerationView() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [panels, setPanels] = useState<Record<string, PanelState>>({});
+  const [confirmTarget, setConfirmTarget] = useState<ReportView | null>(null);
 
   const fetchPage = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -248,15 +249,15 @@ export function ModerationView() {
     }
   }
 
-  async function handleTraiter(report: ReportView) {
+  function traiterMessage(report: ReportView): string {
     const { action } = panelFor(report.id);
-    if (ACTIONS_A_CONFIRMER.has(action)) {
-      const message =
-        action === "DESACTIVATION"
-          ? `Désactiver « ${report.produit?.titre ?? "ce produit"} » ? Il ne sera plus visible des acheteurs.`
-          : `Suspendre ${report.cible.nom} ? Son compte et tout son catalogue seront désactivés.`;
-      if (!window.confirm(message)) return;
-    }
+    return action === "DESACTIVATION"
+      ? `Désactiver « ${report.produit?.titre ?? "ce produit"} » ? Il ne sera plus visible des acheteurs.`
+      : `Suspendre ${report.cible.nom} ? Son compte et tout son catalogue seront désactivés.`;
+  }
+
+  async function traiter(report: ReportView) {
+    const { action } = panelFor(report.id);
     setPanel(report.id, { pending: true, error: null });
     try {
       const updated = await updateReport(report.id, { statut: "TRAITE", actionAdmin: action });
@@ -266,6 +267,22 @@ export function ModerationView() {
     } finally {
       setPanel(report.id, { pending: false });
     }
+  }
+
+  function handleTraiter(report: ReportView) {
+    const { action } = panelFor(report.id);
+    if (ACTIONS_A_CONFIRMER.has(action)) {
+      setConfirmTarget(report);
+      return;
+    }
+    traiter(report);
+  }
+
+  async function confirmTraiter() {
+    const report = confirmTarget;
+    if (!report) return;
+    setConfirmTarget(null);
+    await traiter(report);
   }
 
   const hasMore = items.length < total;
@@ -340,6 +357,24 @@ export function ModerationView() {
           </Button>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        title={
+          confirmTarget && panelFor(confirmTarget.id).action === "DESACTIVATION"
+            ? "Désactiver ce produit ?"
+            : "Suspendre ce vendeur ?"
+        }
+        description={confirmTarget ? traiterMessage(confirmTarget) : null}
+        confirmLabel={
+          confirmTarget && panelFor(confirmTarget.id).action === "DESACTIVATION"
+            ? "Désactiver"
+            : "Suspendre"
+        }
+        variant="danger"
+        onConfirm={confirmTraiter}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }

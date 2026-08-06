@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -35,7 +35,6 @@ describe("CategoriesView", () => {
     listAdminCategoriesMock.mockReset();
     createCategoryMock.mockReset();
     updateCategoryMock.mockReset();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -133,7 +132,7 @@ describe("CategoriesView", () => {
     expect(await screen.findByText("Catégorie parente introuvable.")).toBeInTheDocument();
   });
 
-  it("deactivates a category through a confirmation naming the consequence, then PATCHes actif:false", async () => {
+  it("deactivates a category through a confirmation dialog naming the consequence, then PATCHes actif:false on confirm", async () => {
     listAdminCategoriesMock.mockResolvedValue([makeCategory({ actif: true })]);
     updateCategoryMock.mockResolvedValueOnce(makeCategory({ actif: false }));
     const user = userEvent.setup();
@@ -143,14 +142,17 @@ describe("CategoriesView", () => {
 
     await user.click(screen.getByRole("button", { name: "Désactiver" }));
 
-    expect(window.confirm).toHaveBeenCalledWith(
-      expect.stringMatching(/disparaîtra de la recherche et de la publication/),
-    );
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent(/disparaîtra de la recherche et de la publication/);
+    expect(updateCategoryMock).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Désactiver" }));
+
     await waitFor(() => expect(updateCategoryMock).toHaveBeenCalledWith("c1", { actif: false }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("does not call the API when the deactivation confirmation is cancelled", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(false);
     listAdminCategoriesMock.mockResolvedValue([makeCategory({ actif: true })]);
     const user = userEvent.setup();
 
@@ -158,7 +160,25 @@ describe("CategoriesView", () => {
     await screen.findByText("Alimentation");
 
     await user.click(screen.getByRole("button", { name: "Désactiver" }));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: "Annuler" }));
 
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(updateCategoryMock).not.toHaveBeenCalled();
+  });
+
+  it("closes the confirmation dialog on Escape without calling the API", async () => {
+    listAdminCategoriesMock.mockResolvedValue([makeCategory({ actif: true })]);
+    const user = userEvent.setup();
+
+    render(<CategoriesView />);
+    await screen.findByText("Alimentation");
+
+    await user.click(screen.getByRole("button", { name: "Désactiver" }));
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(updateCategoryMock).not.toHaveBeenCalled();
   });
 
@@ -172,7 +192,11 @@ describe("CategoriesView", () => {
 
     await user.click(screen.getByRole("button", { name: "Réactiver" }));
 
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringMatching(/redeviendra visible/));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent(/redeviendra visible/);
+
+    await user.click(within(dialog).getByRole("button", { name: "Réactiver" }));
+
     await waitFor(() => expect(updateCategoryMock).toHaveBeenCalledWith("c1", { actif: true }));
   });
 

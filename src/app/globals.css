@@ -46,6 +46,7 @@
   --color-tint-danger: #fdf4f2; /* rose — danger / suspension */
   --color-tint-danger-border: #e2c9c4;
   --color-danger: #a8544a;
+  --color-danger-vivid: #8f453c; /* terracotta plus foncé — hover des boutons danger */
 
   /* Encre */
   --color-ink: #10201a;
@@ -62,6 +63,7 @@
   --shadow-soft-lg: 0 16px 36px -18px rgba(15, 61, 46, 0.28);
   --shadow-focus-brand: 0 0 0 3px rgba(15, 61, 46, 0.16);
   --shadow-focus-accent: 0 0 0 3px rgba(232, 163, 61, 0.3);
+  --shadow-focus-danger: 0 0 0 3px rgba(168, 84, 74, 0.28);
 }
 
 @layer base {

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -68,7 +68,6 @@ describe("DemandeRecueCard", () => {
 
   it("closes as aboutie after confirmation, calling POST cloturer with the right payload", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     closePurchaseRequestMock.mockResolvedValueOnce(
       makeDemande({ statut: "CLOTUREE", resultat: "ABOUTIE" }),
     );
@@ -76,45 +75,64 @@ describe("DemandeRecueCard", () => {
 
     await user.click(screen.getByRole("button", { name: "Clôturer · aboutie" }));
 
-    expect(window.confirm).toHaveBeenCalledWith(
-      expect.stringContaining("Ibrahima Diallo sera notifié et pourra laisser un avis"),
-    );
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Ibrahima Diallo sera notifié et pourra laisser un avis");
+    expect(closePurchaseRequestMock).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Clôturer" }));
+
     await waitFor(() => expect(closePurchaseRequestMock).toHaveBeenCalledWith("d1", "ABOUTIE"));
     await waitFor(() => expect(listPurchaseRequestsMock).toHaveBeenCalledTimes(2));
   });
 
   it("closes as annulee after confirmation, calling POST cloturer with the right payload", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     closePurchaseRequestMock.mockResolvedValueOnce(
       makeDemande({ statut: "CLOTUREE", resultat: "ANNULEE" }),
     );
     renderCard(makeDemande());
 
     await user.click(screen.getByRole("button", { name: "Clôturer · annulée" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Clôturer" }));
 
     await waitFor(() => expect(closePurchaseRequestMock).toHaveBeenCalledWith("d1", "ANNULEE"));
   });
 
   it("does not close when the confirmation is declined", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(false);
     renderCard(makeDemande());
 
     await user.click(screen.getByRole("button", { name: "Clôturer · aboutie" }));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: "Annuler" }));
 
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(closePurchaseRequestMock).not.toHaveBeenCalled();
+  });
+
+  it("closes the confirmation dialog on Escape without closing the demande", async () => {
+    const user = userEvent.setup();
+    renderCard(makeDemande());
+
+    await user.click(screen.getByRole("button", { name: "Clôturer · aboutie" }));
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(closePurchaseRequestMock).not.toHaveBeenCalled();
   });
 
   it("shows an error message when the closure fails", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     closePurchaseRequestMock.mockRejectedValueOnce(
       new ApiError(409, "Transition d'état invalide", "INVALID_STATE_TRANSITION"),
     );
     renderCard(makeDemande());
 
     await user.click(screen.getByRole("button", { name: "Clôturer · aboutie" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Clôturer" }));
 
     expect(await screen.findByText("Cette demande a changé d'état, recharge la page.")).toBeInTheDocument();
   });

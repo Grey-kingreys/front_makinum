@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
-import { Alert, Badge, Button, Card, Input } from "@/components/ui";
+import { Alert, Badge, Button, Card, ConfirmDialog, Input } from "@/components/ui";
 import {
   createCategory,
   listAdminCategories,
@@ -209,6 +209,7 @@ export function CategoriesView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
+  const [confirmTarget, setConfirmTarget] = useState<AdminCategoryListItem | null>(null);
 
   const [creating, setCreating] = useState(false);
   const [createValues, setCreateValues] = useState<CategoryFormValues>(EMPTY_FORM);
@@ -346,11 +347,20 @@ export function CategoriesView() {
     }
   }
 
-  async function handleToggleActif(category: AdminCategoryListItem) {
-    const message = category.actif
+  function toggleActifMessage(category: AdminCategoryListItem): string {
+    return category.actif
       ? `Désactiver « ${category.nom} » ? Elle disparaîtra de la recherche et de la publication ; les produits existants continueront de la référencer.`
       : `Réactiver « ${category.nom} » ? Elle redeviendra visible dans la recherche et la publication.`;
-    if (!window.confirm(message)) return;
+  }
+
+  function handleToggleActif(category: AdminCategoryListItem) {
+    setConfirmTarget(category);
+  }
+
+  async function confirmToggleActif() {
+    const category = confirmTarget;
+    if (!category) return;
+    setConfirmTarget(null);
 
     patchRowState(category.id, { toggleSubmitting: true, toggleError: null });
     try {
@@ -468,6 +478,16 @@ export function CategoriesView() {
           ) : null}
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        title={confirmTarget?.actif ? "Désactiver cette catégorie ?" : "Réactiver cette catégorie ?"}
+        description={confirmTarget ? toggleActifMessage(confirmTarget) : null}
+        confirmLabel={confirmTarget?.actif ? "Désactiver" : "Réactiver"}
+        variant={confirmTarget?.actif ? "danger" : "default"}
+        onConfirm={confirmToggleActif}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }

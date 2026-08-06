@@ -2,11 +2,11 @@ import type { ComponentProps } from "react";
 
 import { cn } from "@/lib/cn";
 
-export type ButtonVariant = "primary" | "accent" | "outline";
+export type ButtonVariant = "primary" | "accent" | "outline" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
 export interface ButtonProps extends ComponentProps<"button"> {
-  /** vert marque (défaut), ambre accent, ou contour neutre. */
+  /** vert marque (défaut), ambre accent, contour neutre, ou rouge (action destructrice). */
   variant?: ButtonVariant;
   size?: ButtonSize;
 }
@@ -18,6 +18,8 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
     "bg-accent text-brand font-semibold hover:bg-accent-hover focus-visible:shadow-focus-accent",
   outline:
     "bg-white text-ink font-medium border border-border-strong hover:border-brand focus-visible:shadow-focus-brand",
+  danger:
+    "bg-danger text-cream font-semibold hover:bg-danger-vivid focus-visible:shadow-focus-danger",
 };
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {

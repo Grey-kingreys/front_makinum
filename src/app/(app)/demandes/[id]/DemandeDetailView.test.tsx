@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -108,13 +108,15 @@ describe("DemandeDetailView", () => {
 
   it("sends the draft after confirmation and reflects ENVOYEE locally", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     getPurchaseRequestMock.mockResolvedValueOnce(makeDemande({ statut: "EN_COURS" }));
     sendPurchaseRequestMock.mockResolvedValueOnce(makeDemande({ statut: "ENVOYEE" }));
 
     renderDetail();
     await screen.findByRole("button", { name: "Envoyer la demande" });
     await user.click(screen.getByRole("button", { name: "Envoyer la demande" }));
+
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Envoyer" }));
 
     await waitFor(() => expect(sendPurchaseRequestMock).toHaveBeenCalledWith("d1"));
     expect(await screen.findByText("Envoyée")).toBeInTheDocument();

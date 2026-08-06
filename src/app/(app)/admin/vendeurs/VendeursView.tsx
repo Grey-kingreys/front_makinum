@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
-import { Alert, Badge, Button, Input, type BadgeVariant } from "@/components/ui";
+import { Alert, Badge, Button, ConfirmDialog, Input, type BadgeVariant } from "@/components/ui";
 import { describeAdminUserError, listAdminUsers, updateAdminUser, type AdminUserView } from "@/lib/admin";
 import { useAuth } from "@/lib/auth";
 import type { Role, StatutCompte, StatutVendeur } from "@/lib/auth/types";
@@ -177,6 +177,7 @@ export function VendeursView() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
+  const [confirmTarget, setConfirmTarget] = useState<AdminUserView | null>(null);
 
   const fetchPage = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -242,14 +243,24 @@ export function VendeursView() {
     }
   }
 
-  async function handleToggleCompte(target: AdminUserView) {
+  function toggleCompteMessage(target: AdminUserView): string {
     const suspendu = target.statutCompte === "SUSPENDU";
-    const message = suspendu
+    return suspendu
       ? `Réactiver ${target.nom} ? Le compte redevient actif immédiatement ; les produits désactivés lors de la suspension resteront désactivés.`
       : target.role === "VENDEUR"
         ? `Suspendre ${target.nom} ? Son compte sera bloqué et tout son catalogue sera désactivé automatiquement.`
         : `Suspendre ${target.nom} ? Son compte sera bloqué.`;
-    if (!window.confirm(message)) return;
+  }
+
+  function handleToggleCompte(target: AdminUserView) {
+    setConfirmTarget(target);
+  }
+
+  async function confirmToggleCompte() {
+    const target = confirmTarget;
+    if (!target) return;
+    const suspendu = target.statutCompte === "SUSPENDU";
+    setConfirmTarget(null);
 
     patchRowState(target.id, { pendingCompte: true, error: null });
     try {
@@ -378,6 +389,16 @@ export function VendeursView() {
           </Button>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        title={confirmTarget?.statutCompte === "SUSPENDU" ? "Réactiver ce compte ?" : "Suspendre ce compte ?"}
+        description={confirmTarget ? toggleCompteMessage(confirmTarget) : null}
+        confirmLabel={confirmTarget?.statutCompte === "SUSPENDU" ? "Réactiver" : "Suspendre"}
+        variant={confirmTarget?.statutCompte === "SUSPENDU" ? "default" : "danger"}
+        onConfirm={confirmToggleCompte}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -60,7 +60,6 @@ describe("VendeursView", () => {
     listAdminUsersMock.mockResolvedValue({ items: [makeUser()], total: 1, page: 1, limit: 20 });
     useAuthMock.mockReset();
     useAuthMock.mockReturnValue({ user: makeAdmin(), loading: false, login: vi.fn(), logout: vi.fn(), refresh: vi.fn() });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -128,7 +127,7 @@ describe("VendeursView", () => {
     );
   });
 
-  it("confirms before suspending, mentioning the catalogue cascade for a VENDEUR, then PATCHes statutCompte", async () => {
+  it("opens a confirmation dialog before suspending, mentioning the catalogue cascade for a VENDEUR, then PATCHes statutCompte on confirm", async () => {
     const user = userEvent.setup();
     updateAdminUserMock.mockResolvedValueOnce(makeUser({ statutCompte: "SUSPENDU" }));
     render(<VendeursView />);
@@ -136,20 +135,41 @@ describe("VendeursView", () => {
 
     await user.click(screen.getByRole("button", { name: "Suspendre" }));
 
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringMatching(/catalogue sera désactivé/));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent(/catalogue sera désactivé/);
+    expect(updateAdminUserMock).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Suspendre" }));
+
     await waitFor(() =>
       expect(updateAdminUserMock).toHaveBeenCalledWith("v1", { statutCompte: "SUSPENDU" }),
     );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("does not call the API when the suspend confirmation is cancelled", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(false);
     const user = userEvent.setup();
     render(<VendeursView />);
     await screen.findByText("Fatoumata Bangoura");
 
     await user.click(screen.getByRole("button", { name: "Suspendre" }));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: "Annuler" }));
 
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(updateAdminUserMock).not.toHaveBeenCalled();
+  });
+
+  it("closes the confirmation dialog on Escape without calling the API", async () => {
+    const user = userEvent.setup();
+    render(<VendeursView />);
+    await screen.findByText("Fatoumata Bangoura");
+
+    await user.click(screen.getByRole("button", { name: "Suspendre" }));
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(updateAdminUserMock).not.toHaveBeenCalled();
   });
 
@@ -167,7 +187,11 @@ describe("VendeursView", () => {
 
     await user.click(screen.getByRole("button", { name: "Réactiver" }));
 
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringMatching(/resteront désactivés/));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent(/resteront désactivés/);
+
+    await user.click(within(dialog).getByRole("button", { name: "Réactiver" }));
+
     await waitFor(() =>
       expect(updateAdminUserMock).toHaveBeenCalledWith("v1", { statutCompte: "ACTIF" }),
     );

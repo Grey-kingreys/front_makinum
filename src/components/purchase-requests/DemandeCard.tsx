@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Badge, type BadgeVariant } from "@/components/ui";
+import { Badge, ConfirmDialog, type BadgeVariant } from "@/components/ui";
 import { PhotoPlaceholder } from "@/components/products/PhotoPlaceholder";
 import { VendeurBadge } from "@/components/products/VendeurBadge";
 import { ReviewForm } from "@/components/reviews/ReviewForm";
@@ -70,6 +70,7 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
   const [sendError, setSendError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"send" | "cancel" | null>(null);
 
   const [reviewOpen, setReviewOpen] = useState(false);
   const [submittedReview, setSubmittedReview] = useState<ReviewView | null>(null);
@@ -113,8 +114,7 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
     }
   }
 
-  async function handleSend() {
-    if (!window.confirm(`Envoyer cette demande à ${demande.interlocuteur.nom} ?`)) return;
+  async function doSend() {
     setSending(true);
     setSendError(null);
     try {
@@ -127,8 +127,7 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
     }
   }
 
-  async function handleCancel() {
-    if (!window.confirm("Annuler cette demande ? Cette action est irréversible.")) return;
+  async function doCancel() {
     setCancelling(true);
     setCancelError(null);
     try {
@@ -139,6 +138,21 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
     } finally {
       setCancelling(false);
     }
+  }
+
+  function handleSend() {
+    setConfirmAction("send");
+  }
+
+  function handleCancel() {
+    setConfirmAction("cancel");
+  }
+
+  async function handleConfirmAction() {
+    const action = confirmAction;
+    setConfirmAction(null);
+    if (action === "send") await doSend();
+    else if (action === "cancel") await doCancel();
   }
 
   const resultatBadge =
@@ -320,6 +334,21 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
           </div>
         )
       ) : null}
+
+      <ConfirmDialog
+        open={confirmAction !== null}
+        title={confirmAction === "send" ? "Envoyer cette demande ?" : "Annuler cette demande ?"}
+        description={
+          confirmAction === "send"
+            ? `Envoyer cette demande à ${demande.interlocuteur.nom} ?`
+            : "Annuler cette demande ? Cette action est irréversible."
+        }
+        confirmLabel={confirmAction === "send" ? "Envoyer" : "Annuler la demande"}
+        cancelLabel="Retour"
+        variant={confirmAction === "cancel" ? "danger" : "default"}
+        onConfirm={handleConfirmAction}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Badge, type BadgeVariant } from "@/components/ui";
+import { Badge, ConfirmDialog, type BadgeVariant } from "@/components/ui";
 import { PhotoPlaceholder } from "@/components/products/PhotoPlaceholder";
 import { formatDate, formatPrixGNF, initialsFromName } from "@/lib/format";
 import {
@@ -52,21 +52,27 @@ export function DemandeRecueCard({ demande }: DemandeRecueCardProps) {
 
   const [closingResultat, setClosingResultat] = useState<ResultatDemande | null>(null);
   const [closeError, setCloseError] = useState<string | null>(null);
+  const [confirmResultat, setConfirmResultat] = useState<ResultatDemande | null>(null);
 
   const isEnvoyee = demande.statut === "ENVOYEE";
   const isCloturee = demande.statut === "CLOTUREE";
 
   const total = demande.items.reduce((sum, item) => sum + itemTotal(item), 0);
 
-  async function handleClose(resultat: ResultatDemande) {
+  function closeMessage(resultat: ResultatDemande): string {
     const issue = resultat === "ABOUTIE" ? "aboutie" : "annulée";
-    if (
-      !window.confirm(
-        `Clôturer cette demande comme ${issue} ? ${demande.interlocuteur.nom} sera notifié et pourra laisser un avis.`,
-      )
-    ) {
-      return;
-    }
+    return `Clôturer cette demande comme ${issue} ? ${demande.interlocuteur.nom} sera notifié et pourra laisser un avis.`;
+  }
+
+  function handleClose(resultat: ResultatDemande) {
+    setConfirmResultat(resultat);
+  }
+
+  async function confirmClose() {
+    const resultat = confirmResultat;
+    if (!resultat) return;
+    setConfirmResultat(null);
+
     setClosingResultat(resultat);
     setCloseError(null);
     try {
@@ -170,6 +176,15 @@ export function DemandeRecueCard({ demande }: DemandeRecueCardProps) {
           Demande clôturée. L&apos;acheteur a été notifié et peut laisser un avis.
         </p>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmResultat !== null}
+        title={confirmResultat === "ABOUTIE" ? "Clôturer comme aboutie ?" : "Clôturer comme annulée ?"}
+        description={confirmResultat ? closeMessage(confirmResultat) : null}
+        confirmLabel="Clôturer"
+        onConfirm={confirmClose}
+        onCancel={() => setConfirmResultat(null)}
+      />
     </div>
   );
 }
