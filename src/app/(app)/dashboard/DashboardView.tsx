@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import type { Role } from "@/lib/auth/types";
 import { listAdminUsers } from "@/lib/admin";
+import { listCategories } from "@/lib/categories/api";
 import { useNotifications } from "@/lib/notifications";
 import { getMyProducts, MAX_PRODUITS_ACTIFS } from "@/lib/products/vendor-api";
 import type { ProductView } from "@/lib/products/types";
@@ -25,9 +26,11 @@ import type { ReviewResume } from "@/lib/reviews";
  * endpoints de lecture existants (aucun endpoint ni champ backend nouveau) :
  * chaque rôle voit un sous-ensemble de tuiles + actions rapides, même
  * découpage par rôle que Sidebar.tsx. Chaque tuile vendeur/admin (produits,
- * avis, signalements, utilisateurs) fait son propre fetch, indépendant des
- * autres : l'échec d'un endpoint affiche « — » sur sa tuile sans casser le
- * reste de la page.
+ * avis, signalements, utilisateurs, catégories) fait son propre fetch,
+ * indépendant des autres : l'échec d'un endpoint affiche « — » sur sa tuile
+ * sans casser le reste de la page. La tuile « Catégories » (ADMIN, T31b)
+ * compte les catégories actives via GET /categories (public, déjà utilisé
+ * par le formulaire de publication produit).
  */
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -113,6 +116,10 @@ export function DashboardView() {
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError] = useState(false);
 
+  const [categoriesTotal, setCategoriesTotal] = useState<number | null>(null);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState(false);
+
   const loadProducts = useCallback(async () => {
     setProductsLoading(true);
     setProductsError(false);
@@ -164,6 +171,19 @@ export function DashboardView() {
     }
   }, []);
 
+  const loadCategories = useCallback(async () => {
+    setCategoriesLoading(true);
+    setCategoriesError(false);
+    try {
+      const categoriesList = await listCategories();
+      setCategoriesTotal(categoriesList.length);
+    } catch {
+      setCategoriesError(true);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!isVendeur) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- chargement initial dès que le rôle vendeur est connu, même convention que DemandesProvider.
@@ -189,6 +209,13 @@ export function DashboardView() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- chargement initial dès que le rôle admin est connu, même convention que DemandesProvider.
     loadUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadUsers() est stable (useCallback sans dépendance) ; une seule tentative par activation du rôle admin.
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- chargement initial dès que le rôle admin est connu, même convention que DemandesProvider.
+    loadCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadCategories() est stable (useCallback sans dépendance) ; une seule tentative par activation du rôle admin.
   }, [isAdmin]);
 
   if (!user) return null;
@@ -273,6 +300,12 @@ export function DashboardView() {
               value={usersError ? "—" : (usersTotal ?? "—")}
               href="/admin/vendeurs"
               loading={usersLoading}
+            />
+            <StatTile
+              label="Catégories"
+              value={categoriesError ? "—" : (categoriesTotal ?? "—")}
+              href="/admin/categories"
+              loading={categoriesLoading}
             />
           </>
         ) : null}

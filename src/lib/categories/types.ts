@@ -5,3 +5,12 @@ export interface CategoryListItem {
   slug: string;
   parentId: string | null;
 }
+
+/**
+ * Élément du listing admin (GET /categories/admin) : mêmes champs que
+ * `CategoryListItem`, plus `actif` — liste complète, actives et inactives
+ * (T31b).
+ */
+export interface AdminCategoryListItem extends CategoryListItem {
+  actif: boolean;
+}

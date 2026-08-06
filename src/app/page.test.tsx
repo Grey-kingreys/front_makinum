@@ -1,8 +1,18 @@
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import Page from "@/app/page";
 import { AuthProvider } from "@/lib/auth";
+
+// CategoryGrid (rendu par Page) est un composant serveur async (T31b, fetch
+// GET /categories) — le renderer client de react-dom utilisé par Testing
+// Library ne sait pas monter un composant async hors pipeline RSC. Son
+// comportement (données, repli statique) est déjà couvert par
+// CategoryGrid.test.tsx ; ici on le remplace par un stub synchrone pour ne
+// tester que le reste de la landing.
+vi.mock("@/components/landing/CategoryGrid", () => ({
+  CategoryGrid: () => null,
+}));
 
 // LandingHeader (rendu par Page) est auth-aware (useAuth()) : comme dans la
 // vraie app (AuthProvider monté au root layout, src/app/layout.tsx), il faut

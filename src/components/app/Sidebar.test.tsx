@@ -174,7 +174,7 @@ describe("Sidebar", () => {
     expect(screen.getByText("fatoumata@exemple.gn")).toBeInTheDocument();
   });
 
-  it("shows the ADMIN nav (File de modération, Vendeurs) for an admin", async () => {
+  it("shows the ADMIN nav (File de modération, Vendeurs, Catégories) for an admin", async () => {
     await renderSidebar(makeUser({ role: "ADMIN" }));
 
     expect(screen.getByRole("link", { name: "File de modération" })).toHaveAttribute(
@@ -182,6 +182,10 @@ describe("Sidebar", () => {
       "/admin/moderation",
     );
     expect(screen.getByRole("link", { name: "Vendeurs" })).toHaveAttribute("href", "/admin/vendeurs");
+    expect(screen.getByRole("link", { name: "Catégories" })).toHaveAttribute(
+      "href",
+      "/admin/categories",
+    );
     expect(screen.queryByText("Mon catalogue")).not.toBeInTheDocument();
     expect(screen.queryByText("Produits proches")).not.toBeInTheDocument();
     expect(screen.queryByText("Demandes reçues")).not.toBeInTheDocument();

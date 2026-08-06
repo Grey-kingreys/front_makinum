@@ -16,6 +16,7 @@ const {
   listVendeurReviewsMock,
   listReportsMock,
   listAdminUsersMock,
+  listCategoriesMock,
 } = vi.hoisted(() => ({
   useAuthMock: vi.fn(),
   useNotificationsMock: vi.fn(),
@@ -25,6 +26,7 @@ const {
   listVendeurReviewsMock: vi.fn(),
   listReportsMock: vi.fn(),
   listAdminUsersMock: vi.fn(),
+  listCategoriesMock: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({ useAuth: useAuthMock }));
@@ -42,6 +44,7 @@ vi.mock("@/lib/products/vendor-api", () => ({
 vi.mock("@/lib/reviews/api", () => ({ listVendeurReviews: listVendeurReviewsMock }));
 vi.mock("@/lib/reports/api", () => ({ listReports: listReportsMock }));
 vi.mock("@/lib/admin/api", () => ({ listAdminUsers: listAdminUsersMock }));
+vi.mock("@/lib/categories/api", () => ({ listCategories: listCategoriesMock }));
 
 function makeUser(overrides: Partial<PublicUser> = {}): PublicUser {
   return {
@@ -111,6 +114,7 @@ describe("DashboardView", () => {
     listVendeurReviewsMock.mockReset();
     listReportsMock.mockReset();
     listAdminUsersMock.mockReset();
+    listCategoriesMock.mockReset();
 
     useNotificationsMock.mockReturnValue({
       nbNonLues: 3,
@@ -184,6 +188,7 @@ describe("DashboardView", () => {
     expect(listVendeurReviewsMock).not.toHaveBeenCalled();
     expect(listReportsMock).not.toHaveBeenCalled();
     expect(listAdminUsersMock).not.toHaveBeenCalled();
+    expect(listCategoriesMock).not.toHaveBeenCalled();
   });
 
   it("shows the X/30 products gauge, pending count, note and seller quick actions for a VENDEUR", async () => {
@@ -306,6 +311,10 @@ describe("DashboardView", () => {
     });
     listReportsMock.mockResolvedValue({ items: [], total: 5, page: 1, limit: 1 });
     listAdminUsersMock.mockResolvedValue({ items: [], total: 42, page: 1, limit: 1 });
+    listCategoriesMock.mockResolvedValue([
+      { id: "c1", nom: "Alimentation", slug: "alimentation", parentId: null },
+      { id: "c2", nom: "Maison", slug: "maison", parentId: null },
+    ]);
 
     render(<DashboardView />);
 
@@ -313,6 +322,9 @@ describe("DashboardView", () => {
     expect(tileFor("Signalements nouveaux")).toHaveAttribute("href", "/admin/moderation");
     expect(tileFor("Utilisateurs")).toHaveTextContent("42");
     expect(tileFor("Utilisateurs")).toHaveAttribute("href", "/admin/vendeurs");
+    expect(await screen.findByText("Catégories")).toBeInTheDocument();
+    expect(tileFor("Catégories")).toHaveTextContent("2");
+    expect(tileFor("Catégories")).toHaveAttribute("href", "/admin/categories");
 
     expect(screen.getByRole("link", { name: "Modération" })).toHaveAttribute(
       "href",
