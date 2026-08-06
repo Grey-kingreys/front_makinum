@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 
 import { Alert, Button, Input } from "@/components/ui";
+import { cn } from "@/lib/cn";
 import type { CategoryListItem } from "@/lib/categories/types";
 import { useGeo } from "@/lib/geo";
 
@@ -42,6 +43,14 @@ interface ProductFormProps {
   onSubmit: (payload: ProductFormPayload) => void | Promise<void>;
 }
 
+/** Erreurs de validation par champ (T32 — remplace le message groupé). */
+interface ProductFormErrors {
+  titre?: string;
+  description?: string;
+  prix?: string;
+  categorie?: string;
+}
+
 function digitsOnly(value: string): string {
   return value.replace(/\D/g, "");
 }
@@ -68,7 +77,9 @@ export function ProductForm({
   const [latitude, setLatitude] = useState<number | null>(initialValues?.latitude ?? null);
   const [longitude, setLongitude] = useState<number | null>(initialValues?.longitude ?? null);
   const [wantsPosition, setWantsPosition] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<ProductFormErrors>({});
+
+  const noCategoriesAvailable = categories.length === 0;
 
   // N'applique la position acquise que si l'utilisateur a explicitement
   // cliqué « Utiliser ma position » — sinon une géoloc déjà accordée sur
@@ -85,6 +96,30 @@ export function ProductForm({
     }
   }, [wantsPosition, geoStatus, position]);
 
+  function clearFieldError(field: keyof ProductFormErrors) {
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+  }
+
+  function handleTitreChange(event: ChangeEvent<HTMLInputElement>) {
+    setTitre(event.target.value);
+    clearFieldError("titre");
+  }
+
+  function handleDescriptionChange(event: ChangeEvent<HTMLTextAreaElement>) {
+    setDescription(event.target.value);
+    clearFieldError("description");
+  }
+
+  function handlePrixChange(event: ChangeEvent<HTMLInputElement>) {
+    setPrixDigits(digitsOnly(event.target.value));
+    clearFieldError("prix");
+  }
+
+  function handleCategorieChange(event: ChangeEvent<HTMLSelectElement>) {
+    setCategorieId(event.target.value);
+    clearFieldError("categorie");
+  }
+
   function handleUsePosition() {
     setWantsPosition(true);
     if (geoStatus === "idle" || geoStatus === "denied") {
@@ -100,16 +135,19 @@ export function ProductForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setFormError(null);
 
     const cleanTitre = titre.trim();
     const cleanDescription = description.trim();
     const prix = Number(prixDigits);
 
-    if (!cleanTitre || !cleanDescription || !categorieId || !prixDigits || prix <= 0) {
-      setFormError("Complète le titre, la description, le prix et la catégorie.");
-      return;
-    }
+    const nextErrors: ProductFormErrors = {};
+    if (!cleanTitre) nextErrors.titre = "Le titre est requis.";
+    if (!cleanDescription) nextErrors.description = "La description est requise.";
+    if (!prixDigits || prix <= 0) nextErrors.prix = "Indique un prix supérieur à 0.";
+    if (!categorieId) nextErrors.categorie = "Choisis une catégorie.";
+
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
 
     await onSubmit({
       titre: cleanTitre,
@@ -123,20 +161,20 @@ export function ProductForm({
 
   return (
     // noValidate : la validation HTML5 native (attributs `required`) bloquerait
-    // silencieusement l'événement submit avant handleSubmit — le message
-    // groupé ci-dessus (plus lisible, cohérent avec le reste du design system)
-    // remplace intentionnellement les bulles de validation du navigateur.
+    // silencieusement l'événement submit avant handleSubmit — les erreurs par
+    // champ ci-dessous (rattachées à chaque champ, cohérentes avec le reste du
+    // design system) remplacent intentionnellement les bulles de validation
+    // du navigateur.
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-[15px]">
-      {formError ? <Alert variant="danger">{formError}</Alert> : null}
-
       <Input
         label="Titre du produit"
         value={titre}
-        onChange={(event) => setTitre(event.target.value)}
+        onChange={handleTitreChange}
         maxLength={140}
         placeholder="Pagne wax 6 yards"
         required
         disabled={submitting}
+        error={errors.titre}
       />
 
       <div className="flex flex-col gap-[7px]">
@@ -146,48 +184,77 @@ export function ProductForm({
         <textarea
           id="description"
           value={description}
-          onChange={(event) => setDescription(event.target.value)}
+          onChange={handleDescriptionChange}
           maxLength={5000}
           rows={5}
           placeholder="Décris ton produit : état, matière, quantité disponible…"
           required
           disabled={submitting}
-          className="w-full resize-y rounded-md border border-border-strong bg-white px-[14px] py-[14px] text-[15px] text-ink outline-none transition-colors placeholder:text-brand-placeholder focus-visible:shadow-focus-brand focus:border-brand"
+          aria-invalid={errors.description ? true : undefined}
+          aria-describedby={errors.description ? "description-error" : undefined}
+          className={cn(
+            "w-full resize-y rounded-md border bg-white px-[14px] py-[14px] text-[15px] text-ink outline-none transition-colors placeholder:text-brand-placeholder focus-visible:shadow-focus-brand",
+            errors.description ? "border-danger focus:border-danger" : "border-border-strong focus:border-brand",
+          )}
         />
+        {errors.description ? (
+          <p id="description-error" className="text-[12.5px] text-danger">
+            {errors.description}
+          </p>
+        ) : null}
       </div>
 
       <Input
         label="Prix (GNF)"
         inputMode="numeric"
         value={formatDigits(prixDigits)}
-        onChange={(event) => setPrixDigits(digitsOnly(event.target.value))}
+        onChange={handlePrixChange}
         hint="Montant en francs guinéens, sans centimes."
         placeholder="185 000"
         required
         disabled={submitting}
+        error={errors.prix}
       />
 
       <div className="flex flex-col gap-[7px]">
-        <label htmlFor="categorie" className="text-[13px] text-brand-muted">
+        <label htmlFor={noCategoriesAvailable ? undefined : "categorie"} className="text-[13px] text-brand-muted">
           Catégorie
         </label>
-        <select
-          id="categorie"
-          value={categorieId}
-          onChange={(event) => setCategorieId(event.target.value)}
-          required
-          disabled={submitting}
-          className="w-full rounded-md border border-border-strong bg-white px-[14px] py-[14px] text-[15px] text-ink outline-none transition-colors focus-visible:shadow-focus-brand focus:border-brand"
-        >
-          <option value="" disabled>
-            Choisir une catégorie
-          </option>
-          {categories.map((categorie) => (
-            <option key={categorie.id} value={categorie.id}>
-              {categorie.nom}
-            </option>
-          ))}
-        </select>
+        {noCategoriesAvailable ? (
+          <Alert variant="danger">
+            Aucune catégorie disponible — contacte l&apos;administrateur.
+          </Alert>
+        ) : (
+          <>
+            <select
+              id="categorie"
+              value={categorieId}
+              onChange={handleCategorieChange}
+              required
+              disabled={submitting}
+              aria-invalid={errors.categorie ? true : undefined}
+              aria-describedby={errors.categorie ? "categorie-error" : undefined}
+              className={cn(
+                "w-full rounded-md border bg-white px-[14px] py-[14px] text-[15px] text-ink outline-none transition-colors focus-visible:shadow-focus-brand",
+                errors.categorie ? "border-danger focus:border-danger" : "border-border-strong focus:border-brand",
+              )}
+            >
+              <option value="" disabled>
+                Choisir une catégorie
+              </option>
+              {categories.map((categorie) => (
+                <option key={categorie.id} value={categorie.id}>
+                  {categorie.nom}
+                </option>
+              ))}
+            </select>
+            {errors.categorie ? (
+              <p id="categorie-error" className="text-[12.5px] text-danger">
+                {errors.categorie}
+              </p>
+            ) : null}
+          </>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -221,7 +288,13 @@ export function ProductForm({
         </div>
       </div>
 
-      <Button type="submit" size="lg" disabled={submitting} aria-busy={submitting} className="mt-1">
+      <Button
+        type="submit"
+        size="lg"
+        disabled={submitting || noCategoriesAvailable}
+        aria-busy={submitting}
+        className="mt-1"
+      >
         {submitting ? submittingLabel : submitLabel}
       </Button>
     </form>

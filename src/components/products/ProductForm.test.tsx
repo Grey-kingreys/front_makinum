@@ -88,16 +88,79 @@ describe("ProductForm", () => {
     expect(normalizeSpaces((prixInput as HTMLInputElement).value)).toBe("185 000");
   });
 
-  it("blocks submission and shows an error when required fields are missing", async () => {
+  it("shows an error on the missing field only when the category is the only thing missing", async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderForm();
 
+    await user.type(screen.getByLabelText("Titre du produit"), "Pagne wax");
+    await user.type(screen.getByLabelText("Description"), "Tissu wax authentique.");
+    await user.type(screen.getByLabelText("Prix (GNF)"), "185000");
     await user.click(screen.getByRole("button", { name: "Publier le produit" }));
 
-    expect(
-      screen.getByText("Complète le titre, la description, le prix et la catégorie."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Choisis une catégorie.")).toBeInTheDocument();
+    expect(screen.queryByText("Le titre est requis.")).not.toBeInTheDocument();
+    expect(screen.queryByText("La description est requise.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Indique un prix supérieur à 0.")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Catégorie")).toHaveAttribute("aria-invalid", "true");
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("shows an error on the missing field only when the title is the only thing missing", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderForm();
+
+    await user.type(screen.getByLabelText("Description"), "Tissu wax authentique.");
+    await user.type(screen.getByLabelText("Prix (GNF)"), "185000");
+    await user.selectOptions(screen.getByLabelText("Catégorie"), "c1");
+    await user.click(screen.getByRole("button", { name: "Publier le produit" }));
+
+    expect(screen.getByText("Le titre est requis.")).toBeInTheDocument();
+    expect(screen.queryByText("La description est requise.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Indique un prix supérieur à 0.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Choisis une catégorie.")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Titre du produit")).toHaveAttribute("aria-invalid", "true");
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("clears a field's error once the user corrects it", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await user.type(screen.getByLabelText("Description"), "Tissu wax authentique.");
+    await user.type(screen.getByLabelText("Prix (GNF)"), "185000");
+    await user.selectOptions(screen.getByLabelText("Catégorie"), "c1");
+    await user.click(screen.getByRole("button", { name: "Publier le produit" }));
+
+    expect(screen.getByText("Le titre est requis.")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Titre du produit"), "Pagne wax");
+
+    expect(screen.queryByText("Le titre est requis.")).not.toBeInTheDocument();
+  });
+
+  it("rejects a price of zero with a field-specific message", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderForm();
+
+    await user.type(screen.getByLabelText("Titre du produit"), "Pagne wax");
+    await user.type(screen.getByLabelText("Description"), "Tissu wax authentique.");
+    await user.type(screen.getByLabelText("Prix (GNF)"), "0");
+    await user.selectOptions(screen.getByLabelText("Catégorie"), "c1");
+    await user.click(screen.getByRole("button", { name: "Publier le produit" }));
+
+    expect(screen.getByText("Indique un prix supérieur à 0.")).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("shows a message and disables the submit button when no categories are available", () => {
+    const onSubmit = vi.fn();
+    renderForm({ categories: [], onSubmit });
+
+    expect(
+      screen.getByText("Aucune catégorie disponible — contacte l'administrateur."),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Catégorie")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Publier le produit" })).toBeDisabled();
   });
 
   it("submits the trimmed payload with prix as a number", async () => {
