@@ -124,8 +124,12 @@ export function ProduitsView() {
 
   const topLevelCategories = categories.filter((c) => c.parentId === null);
 
+  // Depuis T38b, GET /products inclut aussi les produits actifs sans
+  // coordonnées (distanceKm: null) — ils ne sont pas forcément dans le
+  // rayon affiché, donc le libellé ne peut plus l'affirmer pour tous les
+  // résultats.
   const subtitle = hasPosition
-    ? `${total} produit${total > 1 ? "s" : ""} actif${total > 1 ? "s" : ""} dans un rayon de ${rayon} km${
+    ? `${total} produit${total > 1 ? "s" : ""} actif${total > 1 ? "s" : ""} dans un rayon de ${rayon} km ou sans localisation précisée${
         sortPref === "proche" ? " · triés du plus proche au plus loin" : " · triés par prix croissant"
       }`
     : `${total} produit${total > 1 ? "s" : ""} actif${total > 1 ? "s" : ""} · triés par plus récents`;

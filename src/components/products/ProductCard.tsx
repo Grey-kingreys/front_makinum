@@ -10,6 +10,12 @@ import { VendeurBadge } from "./VendeurBadge";
  * Carte produit de la grille « Près de toi, maintenant » — fidèle au
  * prototype : zone photo avec badge distance, titre, prix, ligne vendeur
  * (nom + badge statut), note si disponible.
+ *
+ * `distanceKm` est `null` soit parce que l'acheteur n'a pas partagé sa
+ * position, soit — depuis T38b — parce que le produit lui-même n'a pas de
+ * coordonnées (le backend ne les masque plus). Dans les deux cas, le badge
+ * distance est remplacé par une mention neutre au même emplacement : jamais
+ * de « — km »/« 0 km » qui laisserait croire à une distance connue.
  */
 export function ProductCard({ item }: { item: ProductSearchItem }) {
   return (
@@ -28,7 +34,11 @@ export function ProductCard({ item }: { item: ProductSearchItem }) {
           <span className="absolute right-[11px] top-[11px] rounded-full bg-ink/80 px-[10px] py-[5px] text-[12px] text-cream">
             {item.distanceKm} km
           </span>
-        ) : null}
+        ) : (
+          <span className="absolute right-[11px] top-[11px] max-w-[calc(100%-22px)] rounded-md bg-ink/60 px-[9px] py-[4px] text-right text-[11px] leading-snug text-cream/90">
+            Localisation non précisée
+          </span>
+        )}
       </div>
       <div className="flex flex-1 flex-col gap-2 px-[15px] pb-4 pt-[14px]">
         <div className="text-[15px] font-medium leading-snug text-ink">{item.titre}</div>

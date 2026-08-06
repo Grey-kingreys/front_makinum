@@ -214,6 +214,54 @@ describe("ProduitsView", () => {
     expect(card).toHaveTextContent("★ 4.6 (23)");
   });
 
+  // T38b : le backend n'exclut plus les produits publiés sans coordonnées —
+  // ils arrivent avec distanceKm/latitude/longitude à null, mélangés aux
+  // produits localisés dans la même page de résultats.
+  it("shows 'Localisation non précisée' for products without coordinates, and a real distance for the others in the same list", async () => {
+    window.sessionStorage.setItem("makinum.position", JSON.stringify({ lat: 9.6, lng: -13.6 }));
+    const located = makeItem({ id: "p1", titre: "Pagne wax 6 yards", distanceKm: 0.8 });
+    const unlocated = makeItem({
+      id: "p2",
+      titre: "Sac en raphia",
+      latitude: null,
+      longitude: null,
+      distanceKm: null,
+    });
+    setupFetch({ categories: [], products: searchResult([located, unlocated]) });
+
+    renderView();
+
+    const locatedTitle = await screen.findByText("Pagne wax 6 yards");
+    const locatedCard = locatedTitle.closest("a");
+    expect(locatedCard).toHaveTextContent("0.8 km");
+    expect(locatedCard).not.toHaveTextContent("Localisation non précisée");
+
+    const unlocatedTitle = await screen.findByText("Sac en raphia");
+    const unlocatedCard = unlocatedTitle.closest("a");
+    expect(unlocatedCard).toHaveTextContent("Localisation non précisée");
+    // Jamais de valeur trompeuse à la place de la distance manquante.
+    expect(unlocatedCard).not.toHaveTextContent("0 km");
+    expect(unlocatedCard).not.toHaveTextContent("null km");
+  });
+
+  it("keeps the header truthful now that results can include products outside the radius (unlocated ones)", async () => {
+    window.sessionStorage.setItem("makinum.position", JSON.stringify({ lat: 9.6, lng: -13.6 }));
+    setupFetch({
+      categories: [],
+      products: searchResult(
+        [makeItem({ id: "p1" }), makeItem({ id: "p2", latitude: null, longitude: null, distanceKm: null })],
+        2,
+      ),
+    });
+
+    renderView();
+
+    const subtitle = await screen.findByText(/produits actifs/);
+    expect(subtitle).toHaveTextContent("dans un rayon de 25 km ou sans localisation précisée");
+    // Ne doit plus affirmer que tous les résultats sont dans le rayon.
+    expect(subtitle.textContent).not.toMatch(/^2 produits actifs dans un rayon de 25 km ·/);
+  });
+
   it("acquires the position automatically on mount when idle (no stored position)", async () => {
     stubGeolocationSuccess(9.6412, -13.5784);
     const fetchMock = setupFetch({ categories: [], products: searchResult([]) });
