@@ -39,6 +39,19 @@ export function NouveauProduitForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
+  /**
+   * Repli (T37) : `router.push` (next/navigation, App Router) est
+   * fire-and-forget — aucune promesse à attendre, aucune erreur remontée si
+   * la transition traîne ou n'aboutit pas. Sans ceci, un `handleSubmit` qui
+   * ne remet `submitting` à `false` que dans le `catch` laisse le vendeur
+   * planté sur un formulaire rempli mais désactivé, bouton figé sur
+   * « Publication… », sans aucun message — symptôme rapporté en prod
+   * (« le produit est bien créé, mais je reste sur la page »). Le produit
+   * étant déjà créé côté serveur, on sort de `submitting` immédiatement et on
+   * remplace le formulaire par un lien direct vers sa fiche, pour que
+   * l'utilisateur ne soit jamais dans une impasse silencieuse.
+   */
+  const [createdProduct, setCreatedProduct] = useState<{ id: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +73,8 @@ export function NouveauProduitForm() {
     setLimitReached(false);
     try {
       const product = await createProduct(payload);
+      setCreatedProduct(product);
+      setSubmitting(false);
       router.push(`/vendeur/produits/${product.id}`);
     } catch (err) {
       setError(describeCreateError(err));
@@ -102,13 +117,22 @@ export function NouveauProduitForm() {
         </Alert>
       ) : null}
 
-      <ProductForm
-        categories={categories}
-        submitLabel="Publier le produit"
-        submittingLabel="Publication…"
-        submitting={submitting}
-        onSubmit={handleSubmit}
-      />
+      {createdProduct ? (
+        <Alert variant="success" className="mb-5">
+          Produit publié.{" "}
+          <Link href={`/vendeur/produits/${createdProduct.id}`} className="underline">
+            Continuer pour ajouter tes photos
+          </Link>
+        </Alert>
+      ) : (
+        <ProductForm
+          categories={categories}
+          submitLabel="Publier le produit"
+          submittingLabel="Publication…"
+          submitting={submitting}
+          onSubmit={handleSubmit}
+        />
+      )}
     </div>
   );
 }

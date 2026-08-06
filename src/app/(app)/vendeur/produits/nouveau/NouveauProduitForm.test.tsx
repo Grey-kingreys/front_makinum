@@ -91,6 +91,31 @@ describe("NouveauProduitForm", () => {
     expect(pushMock).toHaveBeenCalledWith("/vendeur/produits/p1");
   });
 
+  it("leaves the submitting state after success instead of staying stuck on « Publication… » (T37)", async () => {
+    // router.push (App Router, next/navigation) est fire-and-forget : le mock
+    // ne fait rien de plus qu'enregistrer l'appel, la page ne se démonte donc
+    // pas ici — reproduit le cas prod où la transition traîne/n'aboutit pas.
+    const user = userEvent.setup();
+    createProductMock.mockResolvedValueOnce(makeProduct({ id: "p1" }));
+    renderForm();
+
+    await screen.findByRole("option", { name: "Mode & tissus" });
+    await user.type(screen.getByLabelText("Titre du produit"), "Pagne wax");
+    await user.type(screen.getByLabelText("Description"), "Tissu wax authentique.");
+    await user.type(screen.getByLabelText("Prix (GNF)"), "185000");
+    await user.selectOptions(screen.getByLabelText("Catégorie"), "c1");
+    await user.click(screen.getByRole("button", { name: "Publier le produit" }));
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/vendeur/produits/p1"));
+
+    expect(screen.queryByText("Publication…")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Publication…" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Continuer pour ajouter tes photos" })).toHaveAttribute(
+      "href",
+      "/vendeur/produits/p1",
+    );
+  });
+
   it("shows a clear message and a catalogue link when PRODUCT_LIMIT_REACHED is returned", async () => {
     const user = userEvent.setup();
     createProductMock.mockRejectedValueOnce(

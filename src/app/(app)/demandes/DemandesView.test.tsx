@@ -2,24 +2,46 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { PublicUser } from "@/lib/auth/types";
 import { DemandesProvider } from "@/lib/purchase-requests";
 import type { PurchaseRequestView } from "@/lib/purchase-requests/types";
 
 import { DemandesView } from "./DemandesView";
 
 const {
+  useAuthMock,
   listPurchaseRequestsMock,
   updatePurchaseRequestItemQuantityMock,
   removePurchaseRequestItemMock,
   sendPurchaseRequestMock,
   cancelPurchaseRequestMock,
 } = vi.hoisted(() => ({
+  useAuthMock: vi.fn(),
   listPurchaseRequestsMock: vi.fn(),
   updatePurchaseRequestItemQuantityMock: vi.fn(),
   removePurchaseRequestItemMock: vi.fn(),
   sendPurchaseRequestMock: vi.fn(),
   cancelPurchaseRequestMock: vi.fn(),
 }));
+
+// DemandeCard consulte useAuth() (T36 — numéro de téléphone à l'envoi) ; un
+// utilisateur avec téléphone déjà connu reproduit le comportement d'avant
+// T36 pour ces tests (aucun champ demandé, corps d'envoi inchangé).
+const DEMO_USER: PublicUser = {
+  id: "moi",
+  nom: "Ibrahima Camara",
+  telephone: "+224622111111",
+  telephoneVerifie: true,
+  email: null,
+  emailVerifie: false,
+  role: "ACHETEUR",
+  statutVendeur: "LIBRE",
+  statutCompte: "ACTIF",
+  latitude: null,
+  longitude: null,
+};
+
+vi.mock("@/lib/auth", () => ({ useAuth: useAuthMock }));
 
 vi.mock("@/lib/purchase-requests/api", () => ({
   listPurchaseRequests: listPurchaseRequestsMock,
@@ -64,6 +86,14 @@ function renderView() {
 
 describe("DemandesView", () => {
   beforeEach(() => {
+    useAuthMock.mockReset();
+    useAuthMock.mockReturnValue({
+      user: DEMO_USER,
+      loading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      refresh: vi.fn(),
+    });
     listPurchaseRequestsMock.mockReset();
     updatePurchaseRequestItemQuantityMock.mockReset();
     removePurchaseRequestItemMock.mockReset();

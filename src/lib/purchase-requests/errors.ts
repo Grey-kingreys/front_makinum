@@ -33,6 +33,12 @@ export function describeDemandeError(
         return "Cette demande a changé d'état, recharge la page.";
       case "RATE_LIMITED":
         return "Trop de tentatives, réessaie dans un moment.";
+      // Envoi d'une demande sans téléphone connu sur le compte (T36,
+      // backend/src/purchase-requests/purchase-requests.errors.ts).
+      case "BUYER_PHONE_REQUIRED":
+        return "Un numéro est requis pour envoyer ta demande.";
+      case "PHONE_ALREADY_USED":
+        return "Ce numéro est déjà utilisé par un autre compte.";
       default:
         return error.message || fallback;
     }

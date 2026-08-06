@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 
-import { Badge, ConfirmDialog, type BadgeVariant } from "@/components/ui";
+import { Badge, ConfirmDialog, Input, type BadgeVariant } from "@/components/ui";
 import { PhotoPlaceholder } from "@/components/products/PhotoPlaceholder";
 import { VendeurBadge } from "@/components/products/VendeurBadge";
 import { ReviewForm } from "@/components/reviews/ReviewForm";
+import { ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { formatDate, formatPrixGNF, initialsFromName } from "@/lib/format";
 import {
   cancelPurchaseRequest,
@@ -63,6 +65,7 @@ interface DemandeCardProps {
  */
 export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
   const { refresh: refreshDemandes } = useDemandes();
+  const { user, refresh: refreshAuth } = useAuth();
 
   const [itemActionPendingId, setItemActionPendingId] = useState<string | null>(null);
   const [itemActionError, setItemActionError] = useState<string | null>(null);
@@ -71,6 +74,11 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<"send" | "cancel" | null>(null);
+  // Demandé dans la modale d'envoi uniquement quand le compte acheteur n'a
+  // pas encore de téléphone (T36) — canal de rappel du vendeur, exigé par le
+  // backend (`POST /demandes/:id/envoyer`, 400 BUYER_PHONE_REQUIRED sinon).
+  const [telephoneInput, setTelephoneInput] = useState("");
+  const [telephoneError, setTelephoneError] = useState<string | null>(null);
 
   const [reviewOpen, setReviewOpen] = useState(false);
   const [submittedReview, setSubmittedReview] = useState<ReviewView | null>(null);
@@ -114,14 +122,34 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
     }
   }
 
-  async function doSend() {
+  /**
+   * `telephone` seulement quand le compte acheteur n'en a pas encore (T36) —
+   * cf. le champ ajouté dans la modale de confirmation d'envoi ci-dessous.
+   * BUYER_PHONE_REQUIRED / PHONE_ALREADY_USED sont mappés sur ce champ pour
+   * que la modale reste ouverte et permette de corriger la saisie ; les
+   * autres erreurs suivent le circuit `sendError` habituel (modale fermée).
+   */
+  async function doSend(telephone?: string): Promise<boolean> {
     setSending(true);
     setSendError(null);
     try {
-      const updated = await sendPurchaseRequest(demande.id);
+      const updated = telephone
+        ? await sendPurchaseRequest(demande.id, telephone)
+        : await sendPurchaseRequest(demande.id);
+      if (telephone) {
+        // Le numéro vient d'être enregistré côté serveur sur le compte :
+        // resynchronise la session pour qu'il ne soit plus redemandé.
+        await refreshAuth();
+      }
       await applyUpdate(updated);
+      return true;
     } catch (err) {
-      setSendError(describeDemandeError(err, "Impossible d'envoyer la demande."));
+      if (err instanceof ApiError && (err.code === "BUYER_PHONE_REQUIRED" || err.code === "PHONE_ALREADY_USED")) {
+        setTelephoneError(describeDemandeError(err));
+      } else {
+        setSendError(describeDemandeError(err, "Impossible d'envoyer la demande."));
+      }
+      return false;
     } finally {
       setSending(false);
     }
@@ -141,6 +169,8 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
   }
 
   function handleSend() {
+    setTelephoneInput("");
+    setTelephoneError(null);
     setConfirmAction("send");
   }
 
@@ -149,10 +179,28 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
   }
 
   async function handleConfirmAction() {
-    const action = confirmAction;
-    setConfirmAction(null);
-    if (action === "send") await doSend();
-    else if (action === "cancel") await doCancel();
+    if (confirmAction === "cancel") {
+      setConfirmAction(null);
+      await doCancel();
+      return;
+    }
+    if (confirmAction !== "send") return;
+
+    let telephone: string | undefined;
+    if (!user?.telephone) {
+      const trimmed = telephoneInput.trim();
+      if (!trimmed) {
+        setTelephoneError("Un numéro est requis pour envoyer ta demande.");
+        return;
+      }
+      telephone = trimmed;
+    }
+    setTelephoneError(null);
+    // Reste ouverte tant que l'envoi n'a pas abouti : une erreur de
+    // téléphone (BUYER_PHONE_REQUIRED / PHONE_ALREADY_USED) doit permettre de
+    // corriger la saisie sans rouvrir la modale.
+    const ok = await doSend(telephone);
+    if (ok) setConfirmAction(null);
   }
 
   const resultatBadge =
@@ -339,13 +387,35 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
         open={confirmAction !== null}
         title={confirmAction === "send" ? "Envoyer cette demande ?" : "Annuler cette demande ?"}
         description={
-          confirmAction === "send"
-            ? `Envoyer cette demande à ${demande.interlocuteur.nom} ?`
-            : "Annuler cette demande ? Cette action est irréversible."
+          confirmAction === "send" ? (
+            <div className="flex flex-col gap-3">
+              <p>Envoyer cette demande à {demande.interlocuteur.nom} ?</p>
+              {!user?.telephone ? (
+                <Input
+                  label="Ton numéro de téléphone"
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="+224 622 00 00 00"
+                  value={telephoneInput}
+                  onChange={(event) => {
+                    setTelephoneInput(event.target.value);
+                    setTelephoneError(null);
+                  }}
+                  error={telephoneError ?? undefined}
+                  hint={telephoneError ? undefined : "Le vendeur te rappellera sur ce numéro."}
+                  disabled={sending}
+                  required
+                />
+              ) : null}
+            </div>
+          ) : (
+            "Annuler cette demande ? Cette action est irréversible."
+          )
         }
         confirmLabel={confirmAction === "send" ? "Envoyer" : "Annuler la demande"}
         cancelLabel="Retour"
         variant={confirmAction === "cancel" ? "danger" : "default"}
+        busy={confirmAction === "send" ? sending : cancelling}
         onConfirm={handleConfirmAction}
         onCancel={() => setConfirmAction(null)}
       />

@@ -94,10 +94,19 @@ export function getPurchaseRequest(id: string): Promise<PurchaseRequestView> {
   return apiFetch<PurchaseRequestView>(`/demandes/${encodeURIComponent(id)}`, { method: "GET" });
 }
 
-/** POST /demandes/:id/envoyer */
-export function sendPurchaseRequest(id: string): Promise<PurchaseRequestView> {
+/**
+ * POST /demandes/:id/envoyer — `telephone` optionnel (T36,
+ * backend/src/purchase-requests/dto/envoyer-purchase-request.dto.ts) : ignoré
+ * si le compte acheteur a déjà un numéro (comportement inchangé), sinon
+ * obligatoire — sans quoi l'API répond `400 BUYER_PHONE_REQUIRED` et la
+ * demande reste en brouillon. Fourni, il est normalisé E.164 par le serveur
+ * et enregistré sur le compte ; collision avec un autre compte →
+ * `409 PHONE_ALREADY_USED`.
+ */
+export function sendPurchaseRequest(id: string, telephone?: string): Promise<PurchaseRequestView> {
   return apiFetch<PurchaseRequestView>(`/demandes/${encodeURIComponent(id)}/envoyer`, {
     method: "POST",
+    body: telephone ? { telephone } : undefined,
   });
 }
 

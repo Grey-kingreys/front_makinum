@@ -127,7 +127,7 @@ describe("purchase-requests/api", () => {
     expect(init.method).toBe("GET");
   });
 
-  it("sendPurchaseRequest() POSTs /demandes/:id/envoyer", async () => {
+  it("sendPurchaseRequest() POSTs /demandes/:id/envoyer with no body when telephone is omitted", async () => {
     const fetchMock = fetch as unknown as FetchMock;
     fetchMock.mockResolvedValueOnce(jsonResponse({ id: "d1", statut: "ENVOYEE" }));
 
@@ -136,6 +136,19 @@ describe("purchase-requests/api", () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(`${getApiBaseUrl()}/demandes/d1/envoyer`);
     expect(init.method).toBe("POST");
+    expect(init.body).toBeUndefined();
+  });
+
+  it("sendPurchaseRequest() POSTs { telephone } when provided (T36 — compte sans téléphone)", async () => {
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ id: "d1", statut: "ENVOYEE" }));
+
+    await sendPurchaseRequest("d1", "+224622000000");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${getApiBaseUrl()}/demandes/d1/envoyer`);
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ telephone: "+224622000000" });
   });
 
   it("cancelPurchaseRequest() POSTs /demandes/:id/annuler", async () => {

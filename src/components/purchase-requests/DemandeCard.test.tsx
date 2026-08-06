@@ -1,29 +1,51 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api";
+import type { PublicUser } from "@/lib/auth/types";
 import { DemandesProvider } from "@/lib/purchase-requests";
 import type { PurchaseRequestView } from "@/lib/purchase-requests/types";
 
 import { DemandeCard } from "./DemandeCard";
 
-const { createReviewMock, listPurchaseRequestsMock } = vi.hoisted(() => ({
-  createReviewMock: vi.fn(),
-  listPurchaseRequestsMock: vi.fn(),
-}));
+const { createReviewMock, listPurchaseRequestsMock, sendPurchaseRequestMock, useAuthMock, refreshAuthMock } =
+  vi.hoisted(() => ({
+    createReviewMock: vi.fn(),
+    listPurchaseRequestsMock: vi.fn(),
+    sendPurchaseRequestMock: vi.fn(),
+    useAuthMock: vi.fn(),
+    refreshAuthMock: vi.fn(),
+  }));
 
 vi.mock("@/lib/reviews/api", () => ({ createReview: createReviewMock }));
+vi.mock("@/lib/auth", () => ({ useAuth: useAuthMock }));
 vi.mock("@/lib/purchase-requests/api", () => ({
   listPurchaseRequests: listPurchaseRequestsMock,
   updatePurchaseRequestItemQuantity: vi.fn(),
   removePurchaseRequestItem: vi.fn(),
-  sendPurchaseRequest: vi.fn(),
+  sendPurchaseRequest: sendPurchaseRequestMock,
   cancelPurchaseRequest: vi.fn(),
   closePurchaseRequest: vi.fn(),
   createOrCompletePurchaseRequest: vi.fn(),
   getPurchaseRequest: vi.fn(),
 }));
+
+const USER_WITH_PHONE: PublicUser = {
+  id: "u1",
+  nom: "Moi",
+  telephone: "+224622111111",
+  telephoneVerifie: true,
+  email: null,
+  emailVerifie: false,
+  role: "ACHETEUR",
+  statutVendeur: "LIBRE",
+  statutCompte: "ACTIF",
+  latitude: null,
+  longitude: null,
+};
+
+const USER_WITHOUT_PHONE: PublicUser = { ...USER_WITH_PHONE, telephone: null };
 
 function makeDemande(overrides: Partial<PurchaseRequestView> = {}): PurchaseRequestView {
   return {
@@ -54,6 +76,22 @@ function renderCard(demande: PurchaseRequestView) {
     </DemandesProvider>,
   );
 }
+
+// Défaut partagé par toutes les suites de ce fichier : un compte avec
+// téléphone déjà connu (le cas courant — pas de saisie demandée à l'envoi,
+// T36). Les tests dédiés à l'envoi ci-dessous surchargent avec un mock local
+// (USER_WITHOUT_PHONE) là où c'est le comportement testé.
+beforeEach(() => {
+  useAuthMock.mockReset();
+  useAuthMock.mockReturnValue({
+    user: USER_WITH_PHONE,
+    loading: false,
+    login: vi.fn(),
+    logout: vi.fn(),
+    refresh: refreshAuthMock,
+  });
+  refreshAuthMock.mockReset();
+});
 
 describe("DemandeCard — avis (demande CLOTUREE)", () => {
   beforeEach(() => {
@@ -127,5 +165,113 @@ describe("DemandeCard — avis (demande CLOTUREE)", () => {
   it("does not render the review action on a non-closed demande", () => {
     renderCard(makeDemande({ statut: "ENVOYEE", resultat: null }));
     expect(screen.queryByRole("button", { name: "Laisser un avis" })).not.toBeInTheDocument();
+  });
+});
+
+describe("DemandeCard — envoi d'une demande (T36, téléphone de l'acheteur)", () => {
+  beforeEach(() => {
+    sendPurchaseRequestMock.mockReset();
+    listPurchaseRequestsMock.mockReset();
+    listPurchaseRequestsMock.mockResolvedValue([]);
+  });
+
+  it("does not ask for a phone number when the buyer's account already has one", async () => {
+    const user = userEvent.setup();
+    sendPurchaseRequestMock.mockResolvedValueOnce(makeDemande({ statut: "ENVOYEE" }));
+    renderCard(makeDemande({ statut: "EN_COURS" }));
+
+    await user.click(screen.getByRole("button", { name: "Envoyer la demande" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).queryByLabelText(/numéro de téléphone/i)).not.toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Envoyer" }));
+
+    await waitFor(() => expect(sendPurchaseRequestMock).toHaveBeenCalledWith("d1"));
+    expect(refreshAuthMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("asks for a phone number when the account has none, then sends it in the request body", async () => {
+    useAuthMock.mockReturnValue({
+      user: USER_WITHOUT_PHONE,
+      loading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      refresh: refreshAuthMock,
+    });
+    const user = userEvent.setup();
+    sendPurchaseRequestMock.mockResolvedValueOnce(makeDemande({ statut: "ENVOYEE" }));
+    renderCard(makeDemande({ statut: "EN_COURS" }));
+
+    await user.click(screen.getByRole("button", { name: "Envoyer la demande" }));
+    const dialog = await screen.findByRole("dialog");
+    const phoneField = within(dialog).getByLabelText("Ton numéro de téléphone");
+    expect(dialog).toHaveTextContent("Le vendeur te rappellera sur ce numéro.");
+
+    // Validation client : champ vide → pas d'appel, message d'erreur affiché.
+    await user.click(within(dialog).getByRole("button", { name: "Envoyer" }));
+    expect(sendPurchaseRequestMock).not.toHaveBeenCalled();
+    expect(await screen.findByText("Un numéro est requis pour envoyer ta demande.")).toBeInTheDocument();
+
+    await user.type(phoneField, "+224622000000");
+    await user.click(within(dialog).getByRole("button", { name: "Envoyer" }));
+
+    await waitFor(() =>
+      expect(sendPurchaseRequestMock).toHaveBeenCalledWith("d1", "+224622000000"),
+    );
+    await waitFor(() => expect(refreshAuthMock).toHaveBeenCalled());
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("maps PHONE_ALREADY_USED to a field-level message and keeps the dialog open for retry", async () => {
+    useAuthMock.mockReturnValue({
+      user: USER_WITHOUT_PHONE,
+      loading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      refresh: refreshAuthMock,
+    });
+    const user = userEvent.setup();
+    sendPurchaseRequestMock.mockRejectedValueOnce(
+      new ApiError(409, "Ce numéro de téléphone est déjà utilisé", "PHONE_ALREADY_USED"),
+    );
+    renderCard(makeDemande({ statut: "EN_COURS" }));
+
+    await user.click(screen.getByRole("button", { name: "Envoyer la demande" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Ton numéro de téléphone"), "+224622000000");
+    await user.click(within(dialog).getByRole("button", { name: "Envoyer" }));
+
+    expect(
+      await screen.findByText("Ce numéro est déjà utilisé par un autre compte."),
+    ).toBeInTheDocument();
+    // La modale reste ouverte pour permettre de corriger la saisie.
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(refreshAuthMock).not.toHaveBeenCalled();
+  });
+
+  it("maps BUYER_PHONE_REQUIRED returned by the API to the same field-level message", async () => {
+    useAuthMock.mockReturnValue({
+      user: USER_WITHOUT_PHONE,
+      loading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      refresh: refreshAuthMock,
+    });
+    const user = userEvent.setup();
+    sendPurchaseRequestMock.mockRejectedValueOnce(
+      new ApiError(400, "Un numéro de téléphone est nécessaire", "BUYER_PHONE_REQUIRED"),
+    );
+    renderCard(makeDemande({ statut: "EN_COURS" }));
+
+    await user.click(screen.getByRole("button", { name: "Envoyer la demande" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Ton numéro de téléphone"), "+224622000000");
+    await user.click(within(dialog).getByRole("button", { name: "Envoyer" }));
+
+    expect(
+      await screen.findByText("Un numéro est requis pour envoyer ta demande."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });
