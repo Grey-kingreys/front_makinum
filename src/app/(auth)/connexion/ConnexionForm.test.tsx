@@ -64,7 +64,17 @@ describe("ConnexionForm", () => {
     vi.unstubAllGlobals();
   });
 
-  it("submits identifiant/motDePasse, calls login, and redirects to / on success", async () => {
+  it("redirects an already-authenticated user straight to /dashboard", async () => {
+    window.localStorage.setItem("makinum.accessToken", "existing-token");
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockResolvedValueOnce(jsonResponse(DEMO_USER));
+
+    renderPage();
+
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/dashboard"));
+  });
+
+  it("submits identifiant/motDePasse, calls login, and redirects to /dashboard on success", async () => {
     const user = userEvent.setup();
     const fetchMock = fetch as unknown as FetchMock;
     fetchMock.mockResolvedValueOnce(jsonResponse({ accessToken: "fresh-token", user: DEMO_USER }));
@@ -75,7 +85,7 @@ describe("ConnexionForm", () => {
     await user.type(screen.getByLabelText("Mot de passe"), "secret123");
     await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/"));
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/dashboard"));
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toContain("/auth/login");

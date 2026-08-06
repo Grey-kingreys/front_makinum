@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GeoProvider } from "@/lib/geo";
@@ -84,6 +84,10 @@ async function renderSidebar(user: PublicUser) {
 describe("Sidebar", () => {
   beforeEach(() => {
     window.sessionStorage.clear();
+    // Remis à sa valeur par défaut à chaque test : certains tests (état actif
+    // de « Tableau de bord ») la redéfinissent, ce qui persisterait sinon
+    // pour les tests suivants (mockReturnValue ne s'auto-réinitialise pas).
+    usePathnameMock.mockReturnValue("/vendeur/catalogue");
     listPurchaseRequestsMock.mockReset();
     listPurchaseRequestsMock.mockResolvedValue([]);
     listNotificationsMock.mockReset();
@@ -100,6 +104,25 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: /Ma demande/ })).toHaveAttribute("href", "/demandes");
     expect(screen.queryByText("Mon catalogue")).not.toBeInTheDocument();
     expect(screen.queryByText("Demandes reçues")).not.toBeInTheDocument();
+  });
+
+  it("shows « Tableau de bord » first, linking to /dashboard, for every role", async () => {
+    await renderSidebar(makeUser({ role: "ACHETEUR" }));
+
+    const nav = screen.getByRole("navigation", { name: "Navigation acheteur" });
+    const navLinks = within(nav).getAllByRole("link");
+    expect(navLinks[0]).toHaveAccessibleName("Tableau de bord");
+    expect(navLinks[0]).toHaveAttribute("href", "/dashboard");
+  });
+
+  it("marks « Tableau de bord » active on /dashboard", async () => {
+    usePathnameMock.mockReturnValue("/dashboard");
+    await renderSidebar(makeUser({ role: "VENDEUR" }));
+
+    expect(screen.getByRole("link", { name: "Tableau de bord" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("shows the VENDEUR nav (Mon catalogue + Demandes reçues, both active) for a seller", async () => {

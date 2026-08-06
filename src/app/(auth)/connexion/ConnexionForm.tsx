@@ -56,10 +56,10 @@ export function ConnexionForm() {
 
   const recoverySuccess = searchParams.get(RECOVERY_SUCCESS_PARAM) === "1";
 
-  // Déjà connecté (session restaurée par l'AuthProvider) : direction /.
+  // Déjà connecté (session restaurée par l'AuthProvider) : direction /dashboard.
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace("/");
+      router.replace("/dashboard");
     }
   }, [authLoading, user, router]);
 
@@ -72,7 +72,7 @@ export function ConnexionForm() {
     setError(null);
     try {
       await login(cleanIdentifiant, motDePasse);
-      router.push("/");
+      router.push("/dashboard");
     } catch (err) {
       setError(describeLoginError(err));
     } finally {

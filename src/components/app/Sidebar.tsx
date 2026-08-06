@@ -17,6 +17,8 @@ import { SearchField } from "./SearchField";
  * Sidebar applicative — reproduit l'écran « isApp » du prototype
  * (docs/Design de marketplace locale/Makinum.dc.html) : logo, recherche,
  * section nav selon le rôle, pastille position, carte utilisateur, déconnexion.
+ * « Tableau de bord » (/dashboard) en tête de nav pour tous les rôles,
+ * devant la section spécifique au rôle.
  * ACHETEUR : « Produits proches » (actif) et « Ma demande » (/demandes, T16)
  * — badge = nombre de brouillons EN_COURS (DemandesProvider), masqué à 0.
  * VENDEUR : « Mon catalogue » (/vendeur/catalogue, T17a) et « Demandes
@@ -34,6 +36,9 @@ const ROLE_LABELS: Record<PublicUser["role"], string> = {
   VENDEUR: "Vendeur",
   ADMIN: "Admin",
 };
+
+/** En tête de nav, pour tous les rôles (T27a). */
+const DASHBOARD_LINK = { href: "/dashboard", label: "Tableau de bord" } as const;
 
 const ACHETEUR_LINKS = [
   { href: "/produits", label: "Produits proches" },
@@ -63,7 +68,8 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const isVendeur = user.role === "VENDEUR";
   const isAdmin = user.role === "ADMIN";
-  const navLinks = isVendeur ? VENDEUR_LINKS : isAdmin ? ADMIN_LINKS : ACHETEUR_LINKS;
+  const roleLinks = isVendeur ? VENDEUR_LINKS : isAdmin ? ADMIN_LINKS : ACHETEUR_LINKS;
+  const navLinks = [DASHBOARD_LINK, ...roleLinks];
 
   return (
     <div className="shrink-0 bg-brand text-cream md:sticky md:top-0 md:flex md:h-screen md:w-[252px] md:flex-col md:self-start md:px-4 md:py-[22px]">

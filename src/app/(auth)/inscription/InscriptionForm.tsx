@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { Alert, Button, Input } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { ApiError, apiFetch } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 type RolePublic = "ACHETEUR" | "VENDEUR";
 
@@ -41,6 +42,7 @@ const ROLE_OPTIONS: { value: RolePublic; label: string }[] = [
 
 export function InscriptionForm() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
@@ -51,6 +53,13 @@ export function InscriptionForm() {
   const [error, setError] = useState<string | null>(null);
 
   const telephoneRequired = role === "VENDEUR";
+
+  // Déjà connecté (session restaurée par l'AuthProvider) : direction /dashboard.
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace("/dashboard");
+    }
+  }, [authLoading, user, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { Alert, Button, Input } from "@/components/ui";
 import { ApiError, apiFetch } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 interface MessageResponse {
   message: string;
@@ -29,6 +30,7 @@ function describeRecoveryError(error: unknown): string {
 
 export function RecuperationForm() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
 
   const [step, setStep] = useState<Step>("identifiant");
   const [identifiant, setIdentifiant] = useState("");
@@ -37,6 +39,13 @@ export function RecuperationForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+
+  // Déjà connecté (session restaurée par l'AuthProvider) : direction /dashboard.
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace("/dashboard");
+    }
+  }, [authLoading, user, router]);
 
   async function handleRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -4,13 +4,18 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { useAuth } from "@/lib/auth";
 
 /**
  * En-tête public de la landing (/) — reproduit le header sticky vert marque
  * du prototype de référence (docs/Design de marketplace locale/Makinum.dc.html) :
  * logo, nav ancrée sur les sections de la page, boutons Connexion / Créer un
- * compte. Seul morceau interactif de la page (bascule du menu mobile) : le
- * reste de la landing (`src/app/page.tsx`) reste un Server Component statique.
+ * compte. Interactif (bascule du menu mobile) et auth-aware via useAuth() :
+ * un utilisateur connecté voit un unique bouton « Mon espace » (→ /dashboard)
+ * à la place de Connexion/Créer un compte, desktop et mobile. Pendant la
+ * restauration de session (authLoading), affiche l'état déconnecté par
+ * défaut — pas de flash bloquant. Le reste de la landing
+ * (`src/app/page.tsx`) reste un Server Component statique.
  */
 
 const NAV_LINKS = [
@@ -25,6 +30,11 @@ const ACCENT_BUTTON =
 
 export function LandingHeader() {
   const [open, setOpen] = useState(false);
+  const { user, loading: authLoading } = useAuth();
+  // Pendant la restauration de session, on reste sur l'état déconnecté
+  // (pas de flash) : on ne bascule vers « Mon espace » qu'une fois la
+  // session confirmée active.
+  const isAuthenticated = !authLoading && user !== null;
 
   return (
     <header className="sticky top-0 z-30 border-b border-cream/35 bg-brand text-cream">
@@ -59,12 +69,20 @@ export function LandingHeader() {
         </nav>
 
         <div className="hidden items-center gap-2.5 md:flex">
-          <Link href="/connexion" className={OUTLINE_BUTTON}>
-            Connexion
-          </Link>
-          <Link href="/inscription" className={ACCENT_BUTTON}>
-            Créer un compte
-          </Link>
+          {isAuthenticated ? (
+            <Link href="/dashboard" className={ACCENT_BUTTON}>
+              Mon espace
+            </Link>
+          ) : (
+            <>
+              <Link href="/connexion" className={OUTLINE_BUTTON}>
+                Connexion
+              </Link>
+              <Link href="/inscription" className={ACCENT_BUTTON}>
+                Créer un compte
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -109,12 +127,24 @@ export function LandingHeader() {
             Devenir vendeur
           </Link>
           <div className="mt-2 flex flex-col gap-2.5 border-t border-cream/10 pt-3">
-            <Link href="/connexion" className={cn(OUTLINE_BUTTON, "w-full")} onClick={() => setOpen(false)}>
-              Connexion
-            </Link>
-            <Link href="/inscription" className={cn(ACCENT_BUTTON, "w-full")} onClick={() => setOpen(false)}>
-              Créer un compte
-            </Link>
+            {isAuthenticated ? (
+              <Link
+                href="/dashboard"
+                className={cn(ACCENT_BUTTON, "w-full")}
+                onClick={() => setOpen(false)}
+              >
+                Mon espace
+              </Link>
+            ) : (
+              <>
+                <Link href="/connexion" className={cn(OUTLINE_BUTTON, "w-full")} onClick={() => setOpen(false)}>
+                  Connexion
+                </Link>
+                <Link href="/inscription" className={cn(ACCENT_BUTTON, "w-full")} onClick={() => setOpen(false)}>
+                  Créer un compte
+                </Link>
+              </>
+            )}
           </div>
         </div>
       ) : null}
