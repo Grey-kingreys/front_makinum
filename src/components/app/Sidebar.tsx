@@ -19,8 +19,9 @@ import { SearchField } from "./SearchField";
  * section nav selon le rôle, pastille position, carte utilisateur, déconnexion.
  * « Tableau de bord » (/dashboard) en tête de nav pour tous les rôles,
  * devant la section spécifique au rôle.
- * ACHETEUR : « Produits proches » (actif) et « Ma demande » (/demandes, T16)
- * — badge = nombre de brouillons EN_COURS (DemandesProvider), masqué à 0.
+ * ACHETEUR : « Produits proches » (actif), « Vendeurs » (/vendeurs, T39) et
+ * « Ma demande » (/demandes, T16) — badge = nombre de brouillons EN_COURS
+ * (DemandesProvider), masqué à 0.
  * VENDEUR : « Mon catalogue » (/vendeur/catalogue, T17a) et « Demandes
  * reçues » (/vendeur/demandes, T17b) — badge = nombre de demandes ENVOYEE
  * en attente de clôture (DemandesRecuesProvider), masqué à 0.
@@ -42,6 +43,7 @@ const DASHBOARD_LINK = { href: "/dashboard", label: "Tableau de bord" } as const
 
 const ACHETEUR_LINKS = [
   { href: "/produits", label: "Produits proches" },
+  { href: "/vendeurs", label: "Vendeurs" },
   { href: "/demandes", label: "Ma demande" },
 ] as const;
 

@@ -94,13 +94,14 @@ describe("Sidebar", () => {
     listNotificationsMock.mockResolvedValue({ items: [], total: 0, nbNonLues: 0 });
   });
 
-  it("shows the ACHETEUR nav (Produits proches, Ma demande) for a buyer", async () => {
+  it("shows the ACHETEUR nav (Produits proches, Vendeurs, Ma demande) for a buyer", async () => {
     await renderSidebar(makeUser({ role: "ACHETEUR" }));
 
     expect(screen.getByRole("link", { name: "Produits proches" })).toHaveAttribute(
       "href",
       "/produits",
     );
+    expect(screen.getByRole("link", { name: "Vendeurs" })).toHaveAttribute("href", "/vendeurs");
     expect(screen.getByRole("link", { name: /Ma demande/ })).toHaveAttribute("href", "/demandes");
     expect(screen.queryByText("Mon catalogue")).not.toBeInTheDocument();
     expect(screen.queryByText("Demandes reçues")).not.toBeInTheDocument();

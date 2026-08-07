@@ -137,13 +137,16 @@ export function ProductDetail({ product }: { product: ProductView }) {
                 Paiement à la livraison, hors application
               </div>
 
-              <div className="mb-5 flex items-center gap-3 border-t border-beige pt-[18px]">
+              <Link
+                href={`/vendeurs/${product.vendeurId}`}
+                className="group mb-5 flex items-center gap-3 border-t border-beige pt-[18px]"
+              >
                 <div className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-brand text-[14px] font-semibold text-accent">
                   {initialsFromName(product.vendeur.nom)}
                 </div>
                 <div>
                   <div className="flex items-center gap-2 text-[15px] font-medium text-ink">
-                    {product.vendeur.nom}
+                    <span className="group-hover:underline">{product.vendeur.nom}</span>
                     <VendeurBadge statut={product.vendeur.statutVendeur} />
                   </div>
                   <div className="flex items-center gap-2 text-[13px] text-brand-faint">
@@ -156,7 +159,7 @@ export function ProductDetail({ product }: { product: ProductView }) {
                     {distanceKm !== null ? <span>à {distanceKm} km de toi</span> : null}
                   </div>
                 </div>
-              </div>
+              </Link>
 
               {addedDemandeId ? (
                 <div className="mb-2.5 rounded-xl border border-tint-brand-border bg-tint-brand px-4 py-3.5">
