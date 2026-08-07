@@ -16,6 +16,14 @@ export interface PublicUser {
   role: Role;
   statutVendeur: StatutVendeur;
   statutCompte: StatutCompte;
+  /**
+   * Validation admin du compte vendeur (T30) — débloque la publication de
+   * produits (POST/PATCH /products, POST /products/:id/photos, sinon 403
+   * VENDOR_NOT_VALIDATED). Toujours présent (le backend ne l'omet jamais),
+   * sans signification pour les rôles ACHETEUR/ADMIN (`false` par défaut en
+   * base, jamais exploité en dehors de VENDEUR).
+   */
+  vendeurValide: boolean;
   latitude?: number | null;
   longitude?: number | null;
 }

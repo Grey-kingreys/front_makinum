@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { Alert, Badge, Button, ConfirmDialog, Input, type BadgeVariant } from "@/components/ui";
 import { describeAdminUserError, listAdminUsers, updateAdminUser, type AdminUserView } from "@/lib/admin";
@@ -59,10 +60,16 @@ const NIVEAUX_CONFIANCE: StatutVendeur[] = ["LIBRE", "VERIFIE", "CONFIANCE"];
 interface RowState {
   pendingNiveau: boolean;
   pendingCompte: boolean;
+  pendingValidation: boolean;
   error: string | null;
 }
 
-const DEFAULT_ROW_STATE: RowState = { pendingNiveau: false, pendingCompte: false, error: null };
+const DEFAULT_ROW_STATE: RowState = {
+  pendingNiveau: false,
+  pendingCompte: false,
+  pendingValidation: false,
+  error: null,
+};
 
 function UserRow({
   user,
@@ -70,15 +77,18 @@ function UserRow({
   rowState,
   onSetNiveau,
   onToggleCompte,
+  onValider,
 }: {
   user: AdminUserView;
   currentAdminId: string;
   rowState: RowState;
   onSetNiveau: (niveau: StatutVendeur) => void;
   onToggleCompte: () => void;
+  onValider: () => void;
 }) {
   const isSelf = user.id === currentAdminId;
   const suspendu = user.statutCompte === "SUSPENDU";
+  const enAttenteValidation = user.role === "VENDEUR" && !user.vendeurValide;
 
   return (
     <div className="border-b border-beige-soft px-5 py-4 last:border-b-0">
@@ -101,6 +111,11 @@ function UserRow({
           {user.role === "VENDEUR" ? (
             <Badge variant={STATUT_VENDEUR_BADGE[user.statutVendeur]} dot>
               {STATUT_VENDEUR_LABEL[user.statutVendeur]}
+            </Badge>
+          ) : null}
+          {user.role === "VENDEUR" ? (
+            <Badge variant={user.vendeurValide ? "verifie" : "confiance"} dot>
+              {user.vendeurValide ? "Validé" : "En attente de validation"}
             </Badge>
           ) : null}
         </div>
@@ -131,16 +146,24 @@ function UserRow({
           <span />
         )}
 
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onToggleCompte}
-          disabled={rowState.pendingCompte || isSelf}
-          title={isSelf ? "Tu ne peux pas suspendre ton propre compte." : undefined}
-          className={suspendu ? undefined : "border-tint-danger-border text-danger hover:border-danger"}
-        >
-          {rowState.pendingCompte ? "…" : suspendu ? "Réactiver" : "Suspendre"}
-        </Button>
+        <div className="flex items-center gap-2">
+          {enAttenteValidation ? (
+            <Button size="sm" variant="primary" onClick={onValider} disabled={rowState.pendingValidation}>
+              {rowState.pendingValidation ? "…" : "Valider"}
+            </Button>
+          ) : null}
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onToggleCompte}
+            disabled={rowState.pendingCompte || isSelf}
+            title={isSelf ? "Tu ne peux pas suspendre ton propre compte." : undefined}
+            className={suspendu ? undefined : "border-tint-danger-border text-danger hover:border-danger"}
+          >
+            {rowState.pendingCompte ? "…" : suspendu ? "Réactiver" : "Suspendre"}
+          </Button>
+        </div>
       </div>
 
       {rowState.error ? (
@@ -150,25 +173,34 @@ function UserRow({
   );
 }
 
+type ConfirmAction =
+  | { kind: "toggleCompte"; target: AdminUserView }
+  | { kind: "validerVendeur"; target: AdminUserView };
+
 /**
  * « Vendeurs » (/admin/vendeurs) — écran isSellers du prototype
  * (docs/Design de marketplace locale/Makinum.dc.html), étendu à tous les
  * comptes (pas seulement les vendeurs) : recherche nom/téléphone (déclenchée
  * au submit, pas à chaque frappe), filtres rôle/statut compte/statut
- * vendeur, attribution manuelle du niveau de confiance (LIBRE/VERIFIE/
- * CONFIANCE) et suspension/réactivation de compte — la suspension désactive
- * en cascade tout le catalogue du vendeur (voir
+ * vendeur/validation vendeur (T30), attribution manuelle du niveau de
+ * confiance (LIBRE/VERIFIE/CONFIANCE), validation d'un compte vendeur en
+ * attente et suspension/réactivation de compte — la suspension désactive en
+ * cascade tout le catalogue du vendeur (voir
  * backend/src/reports/account-moderation.service.ts, `suspendre`) ; la
  * réactivation ne réactive pas les produits.
  */
 export function VendeursView() {
   const { user: currentAdmin } = useAuth();
+  const searchParams = useSearchParams();
+  const initialPendingOnly = searchParams.get("vendeurValide") === "false";
 
   const [qInput, setQInput] = useState("");
   const [qApplied, setQApplied] = useState("");
-  const [role, setRole] = useState<Role | "">("");
+  const [role, setRole] = useState<Role | "">(initialPendingOnly ? "VENDEUR" : "");
   const [statutCompte, setStatutCompte] = useState<StatutCompte | "">("");
   const [statutVendeur, setStatutVendeur] = useState<StatutVendeur | "">("");
+  /** Filtre « en attente de validation » (T30) — s'appuie sur `vendeurValide=false`. */
+  const [pendingOnly, setPendingOnly] = useState(initialPendingOnly);
 
   const [items, setItems] = useState<AdminUserView[]>([]);
   const [total, setTotal] = useState(0);
@@ -177,7 +209,7 @@ export function VendeursView() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
-  const [confirmTarget, setConfirmTarget] = useState<AdminUserView | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
   const fetchPage = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -190,6 +222,7 @@ export function VendeursView() {
           role: role || undefined,
           statutCompte: statutCompte || undefined,
           statutVendeur: statutVendeur || undefined,
+          vendeurValide: pendingOnly ? false : undefined,
           page: targetPage,
           limit: PAGE_SIZE,
         });
@@ -203,18 +236,24 @@ export function VendeursView() {
         else setLoading(false);
       }
     },
-    [qApplied, role, statutCompte, statutVendeur],
+    [qApplied, role, statutCompte, statutVendeur, pendingOnly],
   );
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- chargement initial et à chaque changement de filtre/recherche appliquée, même convention que ProduitsView.
     fetchPage(1, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchPage change déjà avec ces dépendances.
-  }, [qApplied, role, statutCompte, statutVendeur]);
+  }, [qApplied, role, statutCompte, statutVendeur, pendingOnly]);
 
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setQApplied(qInput.trim());
+  }
+
+  /** Cocher le filtre présélectionne aussi le rôle VENDEUR (seul rôle où `vendeurValide` a un sens). */
+  function handlePendingOnlyChange(checked: boolean) {
+    setPendingOnly(checked);
+    if (checked) setRole("VENDEUR");
   }
 
   function rowStateFor(id: string): RowState {
@@ -253,14 +292,15 @@ export function VendeursView() {
   }
 
   function handleToggleCompte(target: AdminUserView) {
-    setConfirmTarget(target);
+    setConfirmAction({ kind: "toggleCompte", target });
   }
 
-  async function confirmToggleCompte() {
-    const target = confirmTarget;
-    if (!target) return;
+  function handleValiderVendeur(target: AdminUserView) {
+    setConfirmAction({ kind: "validerVendeur", target });
+  }
+
+  async function confirmToggleCompte(target: AdminUserView) {
     const suspendu = target.statutCompte === "SUSPENDU";
-    setConfirmTarget(null);
 
     patchRowState(target.id, { pendingCompte: true, error: null });
     try {
@@ -274,6 +314,33 @@ export function VendeursView() {
       });
     } finally {
       patchRowState(target.id, { pendingCompte: false });
+    }
+  }
+
+  /** Valide le vendeur puis rafraîchit la liste (nécessaire pour que la ligne disparaisse du filtre « en attente »). */
+  async function confirmValiderVendeur(target: AdminUserView) {
+    patchRowState(target.id, { pendingValidation: true, error: null });
+    try {
+      await updateAdminUser(target.id, { vendeurValide: true });
+      await fetchPage(1, false);
+    } catch (err) {
+      patchRowState(target.id, {
+        pendingValidation: false,
+        error: describeAdminUserError(err, "Impossible de valider ce vendeur."),
+      });
+      return;
+    }
+    patchRowState(target.id, { pendingValidation: false });
+  }
+
+  async function handleConfirm() {
+    const action = confirmAction;
+    if (!action) return;
+    setConfirmAction(null);
+    if (action.kind === "toggleCompte") {
+      await confirmToggleCompte(action.target);
+    } else {
+      await confirmValiderVendeur(action.target);
     }
   }
 
@@ -346,6 +413,15 @@ export function VendeursView() {
             ))}
           </select>
         </label>
+        <label className="flex items-center gap-2 self-end pb-2.5 text-[13px] text-brand-muted">
+          <input
+            type="checkbox"
+            checked={pendingOnly}
+            onChange={(event) => handlePendingOnlyChange(event.target.checked)}
+            className="h-4 w-4 rounded border-border-strong"
+          />
+          En attente de validation
+        </label>
       </div>
 
       {error ? (
@@ -377,6 +453,7 @@ export function VendeursView() {
               rowState={rowStateFor(item.id)}
               onSetNiveau={(niveau) => handleSetNiveau(item, niveau)}
               onToggleCompte={() => handleToggleCompte(item)}
+              onValider={() => handleValiderVendeur(item)}
             />
           ))}
         </div>
@@ -391,13 +468,35 @@ export function VendeursView() {
       ) : null}
 
       <ConfirmDialog
-        open={confirmTarget !== null}
-        title={confirmTarget?.statutCompte === "SUSPENDU" ? "Réactiver ce compte ?" : "Suspendre ce compte ?"}
-        description={confirmTarget ? toggleCompteMessage(confirmTarget) : null}
-        confirmLabel={confirmTarget?.statutCompte === "SUSPENDU" ? "Réactiver" : "Suspendre"}
-        variant={confirmTarget?.statutCompte === "SUSPENDU" ? "default" : "danger"}
-        onConfirm={confirmToggleCompte}
-        onCancel={() => setConfirmTarget(null)}
+        open={confirmAction !== null}
+        title={
+          confirmAction?.kind === "validerVendeur"
+            ? "Valider ce vendeur ?"
+            : confirmAction?.target.statutCompte === "SUSPENDU"
+              ? "Réactiver ce compte ?"
+              : "Suspendre ce compte ?"
+        }
+        description={
+          confirmAction?.kind === "validerVendeur"
+            ? `Valider le compte de ${confirmAction.target.nom} ? Il pourra publier des produits et sera notifié de la validation.`
+            : confirmAction
+              ? toggleCompteMessage(confirmAction.target)
+              : null
+        }
+        confirmLabel={
+          confirmAction?.kind === "validerVendeur"
+            ? "Valider"
+            : confirmAction?.target.statutCompte === "SUSPENDU"
+              ? "Réactiver"
+              : "Suspendre"
+        }
+        variant={
+          confirmAction?.kind === "validerVendeur" || confirmAction?.target.statutCompte === "SUSPENDU"
+            ? "default"
+            : "danger"
+        }
+        onConfirm={handleConfirm}
+        onCancel={() => setConfirmAction(null)}
       />
     </div>
   );

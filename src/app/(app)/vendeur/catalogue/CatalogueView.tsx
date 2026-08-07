@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, Button } from "@/components/ui";
 import { VendorProductCard } from "@/components/products/VendorProductCard";
 import { ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import {
   getMyProducts,
@@ -19,6 +20,38 @@ const SEUIL_ALERTE_ACTIFS = MAX_PRODUITS_ACTIFS - 2;
 
 const PRIMARY_LINK_CLASSES =
   "inline-flex items-center justify-center gap-2 rounded-md bg-brand px-5 py-3.5 text-[15px] font-semibold text-cream transition-colors hover:bg-brand-vivid focus-visible:outline-none focus-visible:shadow-focus-brand";
+
+const VALIDATION_PENDING_MESSAGE =
+  "Ton compte vendeur doit être validé par un administrateur avant de publier un produit.";
+
+/**
+ * « Publier un produit » — lien actif une fois le compte validé, sinon
+ * remplacé par un élément désactivé avec l'explication à côté (T30) : évite
+ * que le vendeur atteigne le formulaire pour se prendre un refus (filet de
+ * sécurité côté formulaire malgré tout, voir describeCreateError).
+ */
+function PublishProductLink({ label, disabled }: { label: string; disabled: boolean }) {
+  if (disabled) {
+    return (
+      <div className="flex flex-col items-start gap-1.5 sm:items-end">
+        <span
+          aria-disabled="true"
+          title={VALIDATION_PENDING_MESSAGE}
+          className={cn(PRIMARY_LINK_CLASSES, "cursor-not-allowed bg-beige-soft text-brand-faint hover:bg-beige-soft")}
+        >
+          {label}
+        </span>
+        <p className="text-[12.5px] text-brand-faint">{VALIDATION_PENDING_MESSAGE}</p>
+      </div>
+    );
+  }
+
+  return (
+    <Link href="/vendeur/produits/nouveau" className={PRIMARY_LINK_CLASSES}>
+      {label}
+    </Link>
+  );
+}
 
 function SkeletonCard() {
   return (
@@ -41,6 +74,9 @@ function SkeletonCard() {
  * Désactiver-Réactiver.
  */
 export function CatalogueView() {
+  const { user } = useAuth();
+  const publishDisabled = user?.role === "VENDEUR" && user.vendeurValide === false;
+
   const [products, setProducts] = useState<ProductView[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,9 +137,7 @@ export function CatalogueView() {
             {products ? `${products.length} produit${products.length > 1 ? "s" : ""} au total` : "…"}
           </p>
         </div>
-        <Link href="/vendeur/produits/nouveau" className={PRIMARY_LINK_CLASSES}>
-          Publier un produit
-        </Link>
+        <PublishProductLink label="Publier un produit" disabled={publishDisabled} />
       </div>
 
       <div className="mb-6 rounded-xl border border-border bg-white p-5">
@@ -160,9 +194,9 @@ export function CatalogueView() {
           <p className="mb-4 text-[14.5px] text-brand-subtle">
             Tu n&apos;as encore publié aucun produit.
           </p>
-          <Link href="/vendeur/produits/nouveau" className={PRIMARY_LINK_CLASSES}>
-            Publier mon premier produit
-          </Link>
+          <div className="flex justify-center">
+            <PublishProductLink label="Publier mon premier produit" disabled={publishDisabled} />
+          </div>
         </div>
       ) : products && products.length > 0 ? (
         <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

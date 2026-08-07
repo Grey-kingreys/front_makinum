@@ -3,13 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api";
+import type { PublicUser } from "@/lib/auth/types";
 import type { ProductView } from "@/lib/products/types";
 
 import { CatalogueView } from "./CatalogueView";
 
-const { getMyProductsMock, updateProductMock } = vi.hoisted(() => ({
+const { getMyProductsMock, updateProductMock, useAuthMock } = vi.hoisted(() => ({
   getMyProductsMock: vi.fn(),
   updateProductMock: vi.fn(),
+  useAuthMock: vi.fn(),
 }));
 
 vi.mock("@/lib/products/vendor-api", async () => {
@@ -21,6 +23,26 @@ vi.mock("@/lib/products/vendor-api", async () => {
     updateProduct: updateProductMock,
   };
 });
+
+vi.mock("@/lib/auth", () => ({ useAuth: useAuthMock }));
+
+function makeUser(overrides: Partial<PublicUser> = {}): PublicUser {
+  return {
+    id: "v1",
+    nom: "Fatoumata Bangoura",
+    telephone: "+224622000000",
+    telephoneVerifie: true,
+    email: null,
+    emailVerifie: false,
+    role: "VENDEUR",
+    statutVendeur: "LIBRE",
+    statutCompte: "ACTIF",
+    vendeurValide: true,
+    latitude: null,
+    longitude: null,
+    ...overrides,
+  };
+}
 
 function makeProduct(overrides: Partial<ProductView> = {}): ProductView {
   return {
@@ -46,6 +68,14 @@ describe("CatalogueView", () => {
   beforeEach(() => {
     getMyProductsMock.mockReset();
     updateProductMock.mockReset();
+    useAuthMock.mockReset();
+    useAuthMock.mockReturnValue({
+      user: makeUser(),
+      loading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      refresh: vi.fn(),
+    });
   });
 
   it("shows the empty state with a CTA when the vendor has no product yet", async () => {
@@ -125,5 +155,57 @@ describe("CatalogueView", () => {
     await user.click(screen.getByRole("button", { name: "Réessayer" }));
 
     expect(await screen.findByText("Pagne wax 6 yards")).toBeInTheDocument();
+  });
+
+  it("disables « Publier un produit » with an explanation for an unvalidated vendor", async () => {
+    useAuthMock.mockReturnValue({
+      user: makeUser({ vendeurValide: false }),
+      loading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      refresh: vi.fn(),
+    });
+    getMyProductsMock.mockResolvedValueOnce([makeProduct({ id: "p1" })]);
+    render(<CatalogueView />);
+
+    await screen.findByText("Pagne wax 6 yards");
+
+    expect(screen.queryByRole("link", { name: "Publier un produit" })).not.toBeInTheDocument();
+    const disabledCta = screen.getByText("Publier un produit");
+    expect(disabledCta).toHaveAttribute("aria-disabled", "true");
+    expect(
+      screen.getByText(/compte vendeur doit être validé par un administrateur/),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps « Publier un produit » as an active link for a validated vendor", async () => {
+    getMyProductsMock.mockResolvedValueOnce([makeProduct({ id: "p1" })]);
+    render(<CatalogueView />);
+
+    await screen.findByText("Pagne wax 6 yards");
+
+    expect(screen.getByRole("link", { name: "Publier un produit" })).toHaveAttribute(
+      "href",
+      "/vendeur/produits/nouveau",
+    );
+  });
+
+  it("disables « Publier mon premier produit » in the empty state for an unvalidated vendor", async () => {
+    useAuthMock.mockReturnValue({
+      user: makeUser({ vendeurValide: false }),
+      loading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      refresh: vi.fn(),
+    });
+    getMyProductsMock.mockResolvedValueOnce([]);
+    render(<CatalogueView />);
+
+    await screen.findByText("Tu n'as encore publié aucun produit.");
+
+    expect(
+      screen.queryByRole("link", { name: "Publier mon premier produit" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Publier mon premier produit")).toHaveAttribute("aria-disabled", "true");
   });
 });

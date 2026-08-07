@@ -18,6 +18,8 @@ function describeCreateError(error: unknown): string {
         return "Tu as atteint la limite de 30 produits actifs. Désactive un produit dans ton catalogue avant d'en publier un nouveau.";
       case "CATEGORY_NOT_FOUND":
         return "Catégorie introuvable — choisis-en une autre.";
+      case "VENDOR_NOT_VALIDATED":
+        return "Ton compte vendeur doit être validé par un administrateur avant de publier des produits.";
       default:
         return error.message || "Impossible de publier ce produit. Réessaie.";
     }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { AdminGuard } from "@/components/app/AdminGuard";
 
@@ -9,7 +10,9 @@ export const metadata: Metadata = { title: "Vendeurs" };
 export default function VendeursPage() {
   return (
     <AdminGuard>
-      <VendeursView />
+      <Suspense fallback={null}>
+        <VendeursView />
+      </Suspense>
     </AdminGuard>
   );
 }

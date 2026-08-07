@@ -139,4 +139,28 @@ describe("NouveauProduitForm", () => {
     );
     expect(pushMock).not.toHaveBeenCalled();
   });
+
+  it("shows a clear message when the vendor account is not yet validated (VENDOR_NOT_VALIDATED)", async () => {
+    const user = userEvent.setup();
+    createProductMock.mockRejectedValueOnce(
+      new ApiError(
+        403,
+        "Votre compte vendeur doit être validé par un administrateur avant de publier des produits",
+        "VENDOR_NOT_VALIDATED",
+      ),
+    );
+    renderForm();
+
+    await screen.findByRole("option", { name: "Mode & tissus" });
+    await user.type(screen.getByLabelText("Titre du produit"), "Pagne wax");
+    await user.type(screen.getByLabelText("Description"), "Tissu wax authentique.");
+    await user.type(screen.getByLabelText("Prix (GNF)"), "185000");
+    await user.selectOptions(screen.getByLabelText("Catégorie"), "c1");
+    await user.click(screen.getByRole("button", { name: "Publier le produit" }));
+
+    expect(
+      await screen.findByText(/doit être validé par un administrateur/),
+    ).toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalled();
+  });
 });

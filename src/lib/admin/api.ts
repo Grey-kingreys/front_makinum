@@ -13,6 +13,8 @@ export interface ListAdminUsersParams {
   role?: Role;
   statutCompte?: StatutCompte;
   statutVendeur?: StatutVendeur;
+  /** Vendeurs en attente de validation admin (T30) : `false` = pas encore validés. */
+  vendeurValide?: boolean;
   /** Recherche insensible à la casse sur le nom ou le téléphone. */
   q?: string;
   page?: number;
@@ -24,6 +26,7 @@ function buildAdminUsersQuery(params: ListAdminUsersParams): string {
   if (params.role !== undefined) usp.set("role", params.role);
   if (params.statutCompte !== undefined) usp.set("statutCompte", params.statutCompte);
   if (params.statutVendeur !== undefined) usp.set("statutVendeur", params.statutVendeur);
+  if (params.vendeurValide !== undefined) usp.set("vendeurValide", String(params.vendeurValide));
   if (params.q !== undefined && params.q.trim()) usp.set("q", params.q.trim());
   if (params.page !== undefined) usp.set("page", String(params.page));
   if (params.limit !== undefined) usp.set("limit", String(params.limit));
@@ -49,6 +52,13 @@ export interface UpdateAdminUserInput {
    * désactivés.
    */
   statutCompte?: StatutCompte;
+  /**
+   * Validation admin du compte vendeur (T30) : passage à `true` débloque la
+   * publication de produits côté vendeur et déclenche une notification
+   * (VENDEUR_VALIDE). Le retour à `false` n'est pas exposé côté écran admin
+   * (pas de cas d'usage V1).
+   */
+  vendeurValide?: boolean;
 }
 
 /**

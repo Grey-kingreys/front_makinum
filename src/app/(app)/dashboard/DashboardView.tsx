@@ -26,11 +26,14 @@ import type { ReviewResume } from "@/lib/reviews";
  * endpoints de lecture existants (aucun endpoint ni champ backend nouveau) :
  * chaque rôle voit un sous-ensemble de tuiles + actions rapides, même
  * découpage par rôle que Sidebar.tsx. Chaque tuile vendeur/admin (produits,
- * avis, signalements, utilisateurs, catégories) fait son propre fetch,
- * indépendant des autres : l'échec d'un endpoint affiche « — » sur sa tuile
- * sans casser le reste de la page. La tuile « Catégories » (ADMIN, T31b)
- * compte les catégories actives via GET /categories (public, déjà utilisé
- * par le formulaire de publication produit).
+ * avis, signalements, utilisateurs, vendeurs à valider, catégories) fait son
+ * propre fetch, indépendant des autres : l'échec d'un endpoint affiche « — »
+ * sur sa tuile sans casser le reste de la page. La tuile « Catégories »
+ * (ADMIN, T31b) compte les catégories actives via GET /categories (public,
+ * déjà utilisé par le formulaire de publication produit). La tuile
+ * « Vendeurs à valider » (ADMIN, T30) compte les VENDEUR avec
+ * `vendeurValide=false` et renvoie vers /admin/vendeurs pré-filtré sur ce
+ * critère (VendeursView lit `?vendeurValide=false` au montage).
  */
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -116,6 +119,10 @@ export function DashboardView() {
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError] = useState(false);
 
+  const [pendingVendeursTotal, setPendingVendeursTotal] = useState<number | null>(null);
+  const [pendingVendeursLoading, setPendingVendeursLoading] = useState(true);
+  const [pendingVendeursError, setPendingVendeursError] = useState(false);
+
   const [categoriesTotal, setCategoriesTotal] = useState<number | null>(null);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState(false);
@@ -171,6 +178,20 @@ export function DashboardView() {
     }
   }, []);
 
+  /** T30 : vendeurs en attente de validation admin (vendeurValide=false), comptés à part de la tuile « Utilisateurs ». */
+  const loadPendingVendeurs = useCallback(async () => {
+    setPendingVendeursLoading(true);
+    setPendingVendeursError(false);
+    try {
+      const result = await listAdminUsers({ role: "VENDEUR", vendeurValide: false, limit: 1 });
+      setPendingVendeursTotal(result.total);
+    } catch {
+      setPendingVendeursError(true);
+    } finally {
+      setPendingVendeursLoading(false);
+    }
+  }, []);
+
   const loadCategories = useCallback(async () => {
     setCategoriesLoading(true);
     setCategoriesError(false);
@@ -209,6 +230,13 @@ export function DashboardView() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- chargement initial dès que le rôle admin est connu, même convention que DemandesProvider.
     loadUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadUsers() est stable (useCallback sans dépendance) ; une seule tentative par activation du rôle admin.
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- chargement initial dès que le rôle admin est connu, même convention que DemandesProvider.
+    loadPendingVendeurs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadPendingVendeurs() est stable (useCallback sans dépendance) ; une seule tentative par activation du rôle admin.
   }, [isAdmin]);
 
   useEffect(() => {
@@ -300,6 +328,12 @@ export function DashboardView() {
               value={usersError ? "—" : (usersTotal ?? "—")}
               href="/admin/vendeurs"
               loading={usersLoading}
+            />
+            <StatTile
+              label="Vendeurs à valider"
+              value={pendingVendeursError ? "—" : (pendingVendeursTotal ?? "—")}
+              href="/admin/vendeurs?vendeurValide=false"
+              loading={pendingVendeursLoading}
             />
             <StatTile
               label="Catégories"

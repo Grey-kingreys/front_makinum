@@ -37,6 +37,8 @@ function describeUpdateError(error: unknown): string {
         return "Ce produit n'existe plus.";
       case "NOT_PRODUCT_OWNER":
         return "Ce produit appartient à un autre vendeur.";
+      case "VENDOR_NOT_VALIDATED":
+        return "Ton compte vendeur doit être validé par un administrateur avant de modifier ce produit.";
       default:
         return error.message || "Impossible d'enregistrer les modifications. Réessaie.";
     }
@@ -52,6 +54,9 @@ function describePhotoError(error: unknown): string {
     // ce n'est pas le serveur qui a refusé la photo.
     if (error.code === "NETWORK_ERROR") {
       return "Envoi interrompu — vérifie ta connexion, ou réessaie avec une photo plus légère.";
+    }
+    if (error.code === "VENDOR_NOT_VALIDATED") {
+      return "Ton compte vendeur doit être validé par un administrateur avant d'ajouter des photos.";
     }
     return error.message || "Envoi impossible. Réessaie.";
   }

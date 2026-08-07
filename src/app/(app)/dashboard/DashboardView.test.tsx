@@ -57,6 +57,7 @@ function makeUser(overrides: Partial<PublicUser> = {}): PublicUser {
     role: "ACHETEUR",
     statutVendeur: "LIBRE",
     statutCompte: "ACTIF",
+    vendeurValide: true,
     latitude: null,
     longitude: null,
     ...overrides,
@@ -310,7 +311,15 @@ describe("DashboardView", () => {
       refresh: vi.fn(),
     });
     listReportsMock.mockResolvedValue({ items: [], total: 5, page: 1, limit: 1 });
-    listAdminUsersMock.mockResolvedValue({ items: [], total: 42, page: 1, limit: 1 });
+    // Deux tuiles distinctes consultent listAdminUsers avec des filtres différents
+    // (« Utilisateurs » sans filtre, « Vendeurs à valider » avec role/vendeurValide) :
+    // le mock distingue les deux appels par leurs paramètres.
+    listAdminUsersMock.mockImplementation((params) => {
+      if (params?.role === "VENDEUR" && params?.vendeurValide === false) {
+        return Promise.resolve({ items: [], total: 3, page: 1, limit: 1 });
+      }
+      return Promise.resolve({ items: [], total: 42, page: 1, limit: 1 });
+    });
     listCategoriesMock.mockResolvedValue([
       { id: "c1", nom: "Alimentation", slug: "alimentation", parentId: null },
       { id: "c2", nom: "Maison", slug: "maison", parentId: null },
@@ -322,6 +331,10 @@ describe("DashboardView", () => {
     expect(tileFor("Signalements nouveaux")).toHaveAttribute("href", "/admin/moderation");
     expect(tileFor("Utilisateurs")).toHaveTextContent("42");
     expect(tileFor("Utilisateurs")).toHaveAttribute("href", "/admin/vendeurs");
+    expect(await screen.findByText("Vendeurs à valider")).toBeInTheDocument();
+    expect(tileFor("Vendeurs à valider")).toHaveTextContent("3");
+    expect(tileFor("Vendeurs à valider")).toHaveAttribute("href", "/admin/vendeurs?vendeurValide=false");
+    expect(listAdminUsersMock).toHaveBeenCalledWith({ role: "VENDEUR", vendeurValide: false, limit: 1 });
     expect(await screen.findByText("Catégories")).toBeInTheDocument();
     expect(tileFor("Catégories")).toHaveTextContent("2");
     expect(tileFor("Catégories")).toHaveAttribute("href", "/admin/categories");

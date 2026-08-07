@@ -143,6 +143,28 @@ describe("EditionProduitView", () => {
     expect(await screen.findByText("Modifications enregistrées.")).toBeInTheDocument();
   });
 
+  it("shows a clear message when the vendor account is not yet validated (VENDOR_NOT_VALIDATED)", async () => {
+    const user = userEvent.setup();
+    getProductMock.mockResolvedValueOnce(makeProduct());
+    updateProductMock.mockRejectedValueOnce(
+      new ApiError(
+        403,
+        "Votre compte vendeur doit être validé par un administrateur avant de publier des produits",
+        "VENDOR_NOT_VALIDATED",
+      ),
+    );
+    renderView();
+
+    const titreInput = await screen.findByLabelText("Titre du produit");
+    await user.clear(titreInput);
+    await user.type(titreInput, "Pagne wax premium");
+    await user.click(screen.getByRole("button", { name: "Enregistrer les modifications" }));
+
+    expect(
+      await screen.findByText(/doit être validé par un administrateur/),
+    ).toBeInTheDocument();
+  });
+
   it("renders existing photos with a counter and lets the vendor delete one", async () => {
     const user = userEvent.setup();
     getProductMock.mockResolvedValueOnce(
@@ -210,6 +232,29 @@ describe("EditionProduitView", () => {
 
     expect(await screen.findByText("1 / 10")).toBeInTheDocument();
     expect(await screen.findByText(/Image refusée : format non supporté/)).toBeInTheDocument();
+  });
+
+  it("shows a clear message on a photo upload when the vendor account is not yet validated (VENDOR_NOT_VALIDATED)", async () => {
+    const user = userEvent.setup();
+    getProductMock.mockResolvedValueOnce(makeProduct({ photos: [] }));
+    addProductPhotoMock.mockRejectedValueOnce(
+      new ApiError(
+        403,
+        "Votre compte vendeur doit être validé par un administrateur avant de publier des produits",
+        "VENDOR_NOT_VALIDATED",
+      ),
+    );
+    renderView();
+
+    await screen.findByText("0 / 10");
+
+    const file = new File(["binary"], "photo.jpg", { type: "image/jpeg" });
+    const input = screen.getByLabelText("Ajouter des photos");
+    await user.upload(input, [file]);
+
+    expect(
+      await screen.findByText(/doit être validé par un administrateur/),
+    ).toBeInTheDocument();
   });
 
   it("still uploads the file when the browser empties the FileList in place as soon as `value` is reset (real-browser behavior, T42)", async () => {

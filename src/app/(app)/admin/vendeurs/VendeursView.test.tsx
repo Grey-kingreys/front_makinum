@@ -7,10 +7,11 @@ import type { PublicUser } from "@/lib/auth/types";
 
 import { VendeursView } from "./VendeursView";
 
-const { listAdminUsersMock, updateAdminUserMock, useAuthMock } = vi.hoisted(() => ({
+const { listAdminUsersMock, updateAdminUserMock, useAuthMock, useSearchParamsMock } = vi.hoisted(() => ({
   listAdminUsersMock: vi.fn(),
   updateAdminUserMock: vi.fn(),
   useAuthMock: vi.fn(),
+  useSearchParamsMock: vi.fn(() => new URLSearchParams()),
 }));
 
 vi.mock("@/lib/admin/api", () => ({
@@ -19,6 +20,10 @@ vi.mock("@/lib/admin/api", () => ({
 }));
 
 vi.mock("@/lib/auth", () => ({ useAuth: useAuthMock }));
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: useSearchParamsMock,
+}));
 
 function makeAdmin(): PublicUser {
   return {
@@ -31,6 +36,7 @@ function makeAdmin(): PublicUser {
     role: "ADMIN",
     statutVendeur: "LIBRE",
     statutCompte: "ACTIF",
+    vendeurValide: true,
     latitude: null,
     longitude: null,
   };
@@ -47,6 +53,9 @@ function makeUser(overrides: Partial<AdminUserView> = {}): AdminUserView {
     role: "VENDEUR",
     statutVendeur: "LIBRE",
     statutCompte: "ACTIF",
+    // Vendeur déjà validé par défaut — les tests dédiés à T30 (filtre, bouton
+    // « Valider ») surchargent explicitement `vendeurValide: false`.
+    vendeurValide: true,
     latitude: null,
     longitude: null,
     ...overrides,
@@ -60,6 +69,8 @@ describe("VendeursView", () => {
     listAdminUsersMock.mockResolvedValue({ items: [makeUser()], total: 1, page: 1, limit: 20 });
     useAuthMock.mockReset();
     useAuthMock.mockReturnValue({ user: makeAdmin(), loading: false, login: vi.fn(), logout: vi.fn(), refresh: vi.fn() });
+    useSearchParamsMock.mockReset();
+    useSearchParamsMock.mockReturnValue(new URLSearchParams());
   });
 
   afterEach(() => {
@@ -207,5 +218,112 @@ describe("VendeursView", () => {
     render(<VendeursView />);
 
     expect(await screen.findByRole("button", { name: "Suspendre" })).toBeDisabled();
+  });
+
+  it("shows a « Validé » badge for a validated vendor and no Valider button", async () => {
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ vendeurValide: true })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    render(<VendeursView />);
+
+    expect(await screen.findByText("Validé")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Valider" })).not.toBeInTheDocument();
+  });
+
+  it("shows an « En attente de validation » badge and a Valider button for an unvalidated vendor", async () => {
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ vendeurValide: false })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    render(<VendeursView />);
+
+    expect(await screen.findByText("En attente de validation")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Valider" })).toBeInTheDocument();
+  });
+
+  it("validates a pending vendor through the confirmation dialog — PATCHes vendeurValide:true, mentions the notification, then refreshes the list", async () => {
+    listAdminUsersMock.mockResolvedValueOnce({
+      items: [makeUser({ vendeurValide: false })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    updateAdminUserMock.mockResolvedValueOnce(makeUser({ vendeurValide: true }));
+    const user = userEvent.setup();
+    render(<VendeursView />);
+    await screen.findByText("Fatoumata Bangoura");
+    listAdminUsersMock.mockResolvedValueOnce({
+      items: [makeUser({ vendeurValide: true })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Valider" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent(/pourra publier des produits/);
+    expect(dialog).toHaveTextContent(/notifié/);
+    expect(updateAdminUserMock).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Valider" }));
+
+    await waitFor(() =>
+      expect(updateAdminUserMock).toHaveBeenCalledWith("v1", { vendeurValide: true }),
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // Rafraîchit la liste après succès (pas seulement une mise à jour optimiste locale).
+    await waitFor(() => expect(listAdminUsersMock).toHaveBeenCalledTimes(2));
+  });
+
+  it("does not call the API when the validation confirmation is cancelled", async () => {
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ vendeurValide: false })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    const user = userEvent.setup();
+    render(<VendeursView />);
+    await screen.findByText("Fatoumata Bangoura");
+
+    await user.click(screen.getByRole("button", { name: "Valider" }));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: "Annuler" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(updateAdminUserMock).not.toHaveBeenCalled();
+  });
+
+  it("filters on « en attente de validation » — checking it re-fetches with vendeurValide=false and role=VENDEUR", async () => {
+    const user = userEvent.setup();
+    render(<VendeursView />);
+    await screen.findByText("Fatoumata Bangoura");
+    listAdminUsersMock.mockClear();
+
+    await user.click(screen.getByLabelText("En attente de validation"));
+
+    await waitFor(() =>
+      expect(listAdminUsersMock).toHaveBeenCalledWith(
+        expect.objectContaining({ vendeurValide: false, role: "VENDEUR" }),
+      ),
+    );
+  });
+
+  it("pre-applies the « en attente de validation » filter when arriving with ?vendeurValide=false", async () => {
+    useSearchParamsMock.mockReturnValue(new URLSearchParams("vendeurValide=false"));
+    render(<VendeursView />);
+
+    await waitFor(() =>
+      expect(listAdminUsersMock).toHaveBeenCalledWith(
+        expect.objectContaining({ vendeurValide: false, role: "VENDEUR" }),
+      ),
+    );
+    expect(await screen.findByLabelText("En attente de validation")).toBeChecked();
   });
 });
