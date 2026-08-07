@@ -94,6 +94,16 @@ describe("Sidebar", () => {
     listNotificationsMock.mockResolvedValue({ items: [], total: 0, nbNonLues: 0 });
   });
 
+  it("renders the Makinum logo linking to /produits, with the wordmark still shown as text (T41)", async () => {
+    await renderSidebar(makeUser({ role: "ACHETEUR" }));
+
+    const logoLink = screen.getByRole("link", { name: "Makinum" });
+    expect(logoLink).toHaveAttribute("href", "/produits");
+    // Le mot « Makinum » est un <span> texte à côté du SVG (le lien porte le
+    // même nom accessible car le SVG de marque est aria-hidden, cf. Logo).
+    expect(within(logoLink).getByText("Makinum")).toBeInTheDocument();
+  });
+
   it("shows the ACHETEUR nav (Produits proches, Vendeurs, Ma demande) for a buyer", async () => {
     await renderSidebar(makeUser({ role: "ACHETEUR" }));
 

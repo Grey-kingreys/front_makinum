@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <title>Makinum — Apple touch icon 180, coins non arrondis</title>
+  <rect width="180" height="180" fill="#0F3D2E"></rect>
+  <g transform="translate(24.93 32.16) scale(1.0328)">
+    <path d="M12 88 L38 24 L64 88" fill="none" stroke="#F7F4EE" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"></path>
+    <path d="M62 88 L88 24 L114 88" fill="none" stroke="#E8A33D" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"></path>
+  </g>
+</svg>

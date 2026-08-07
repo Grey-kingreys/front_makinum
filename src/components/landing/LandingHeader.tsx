@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { Logo } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { useAuth } from "@/lib/auth";
 
@@ -44,9 +45,7 @@ export function LandingHeader() {
           className="flex shrink-0 items-center gap-3 text-cream"
           onClick={() => setOpen(false)}
         >
-          <span className="grid h-[30px] w-[30px] place-items-center rounded-md bg-accent font-display text-[17px] font-extrabold text-brand">
-            M
-          </span>
+          <Logo variant="negatif" decorative className="h-[30px] w-auto" />
           <span className="font-display text-[20px] font-bold tracking-tight">Makinum</span>
         </Link>
 

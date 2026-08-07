@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,6 +27,18 @@ const DEMO_USER: PublicUser = {
 describe("LandingHeader", () => {
   beforeEach(() => {
     useAuthMock.mockReset();
+  });
+
+  it("renders the Makinum logo linking to / , with the wordmark still shown as text (T41)", () => {
+    useAuthMock.mockReturnValue({ user: null, loading: false, login: vi.fn(), logout: vi.fn(), refresh: vi.fn() });
+
+    render(<LandingHeader />);
+
+    const logoLink = screen.getByRole("link", { name: "Makinum" });
+    expect(logoLink).toHaveAttribute("href", "/");
+    // Le mot « Makinum » est un <span> texte à côté du SVG (le lien porte le
+    // même nom accessible car le SVG de marque est aria-hidden, cf. Logo).
+    expect(within(logoLink).getByText("Makinum")).toBeInTheDocument();
   });
 
   it("shows Connexion/Créer un compte (not Mon espace) when logged out", () => {

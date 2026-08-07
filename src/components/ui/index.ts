@@ -18,3 +18,6 @@ export type { CardProps } from "./Card";
 
 export { ConfirmDialog } from "./ConfirmDialog";
 export type { ConfirmDialogProps, ConfirmDialogVariant } from "./ConfirmDialog";
+
+export { Logo } from "./Logo";
+export type { LogoProps, LogoVariant } from "./Logo";

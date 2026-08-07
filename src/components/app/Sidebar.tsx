@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
+import { Logo } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { useGeo } from "@/lib/geo";
 import { initialsFromName } from "@/lib/format";
@@ -78,9 +79,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
     <div className="shrink-0 bg-brand text-cream md:sticky md:top-0 md:flex md:h-screen md:w-[252px] md:flex-col md:self-start md:px-4 md:py-[22px]">
       <div className="flex items-center justify-between px-4 py-3 md:px-2 md:pb-[22px] md:pt-0">
         <Link href="/produits" className="flex items-center gap-[11px] text-cream">
-          <span className="grid h-[30px] w-[30px] place-items-center rounded-md bg-accent font-display text-[17px] font-extrabold text-brand">
-            M
-          </span>
+          <Logo variant="negatif" decorative className="h-[30px] w-auto" />
           <span className="font-display text-[19px] font-bold tracking-tight">Makinum</span>
         </Link>
         <div className="flex items-center gap-1">

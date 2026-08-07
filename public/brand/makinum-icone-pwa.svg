@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Makinum — icône PWA 512, tuile verte arrondie</title>
+  <rect width="512" height="512" rx="112" fill="#0F3D2E"></rect>
+  <g transform="translate(70.92 91.49) scale(2.9377)">
+    <path d="M12 88 L38 24 L64 88" fill="none" stroke="#F7F4EE" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"></path>
+    <path d="M62 88 L88 24 L114 88" fill="none" stroke="#E8A33D" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"></path>
+  </g>
+</svg>

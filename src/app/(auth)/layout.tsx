@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { Logo } from "@/components/ui";
+
 /**
  * Layout partagé des écrans d'authentification (/connexion, /inscription,
  * /verification, /recuperation) — reproduit le split-screen de l'écran
@@ -14,9 +16,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
     <div className="grid min-h-screen md:grid-cols-2">
       <div className="hidden flex-col justify-between bg-brand px-10 py-12 text-cream md:flex lg:px-14 lg:py-14">
         <Link href="/" className="flex w-fit items-center gap-3 text-cream">
-          <span className="grid h-[30px] w-[30px] place-items-center rounded-md bg-accent font-display text-[17px] font-extrabold text-brand">
-            M
-          </span>
+          <Logo variant="negatif" decorative className="h-[30px] w-auto" />
           <span className="font-display text-[20px] font-bold">Makinum</span>
         </Link>
 
