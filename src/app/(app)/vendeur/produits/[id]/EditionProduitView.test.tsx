@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -210,6 +210,47 @@ describe("EditionProduitView", () => {
 
     expect(await screen.findByText("1 / 10")).toBeInTheDocument();
     expect(await screen.findByText(/Image refusée : format non supporté/)).toBeInTheDocument();
+  });
+
+  it("still uploads the file when the browser empties the FileList in place as soon as `value` is reset (real-browser behavior, T42)", async () => {
+    // jsdom's FileList does NOT empty itself when `input.value` is reset, so a
+    // naive test here would pass whether or not the fix is applied. Real
+    // browsers (Chrome 151 confirmed) return a LIVE FileList from
+    // `input.files`: resetting `input.value` mutates that same list down to
+    // length 0. This test fakes that live behavior on the DOM node itself so
+    // it actually exercises the ordering bug: it must FAIL if the component
+    // reads `event.target.files` again (or keeps a reference to it) AFTER
+    // resetting `event.target.value`.
+    getProductMock.mockResolvedValueOnce(makeProduct({ photos: [] }));
+    addProductPhotoMock.mockResolvedValueOnce(makePhoto({ id: "ph-new", ordre: 1 }));
+    renderView();
+
+    await screen.findByText("0 / 10");
+
+    const input = screen.getByLabelText("Ajouter des photos") as HTMLInputElement;
+    const file = new File(["binary"], "photo.jpg", { type: "image/jpeg" });
+
+    const liveFiles: File[] = [file];
+    Object.defineProperty(input, "files", {
+      configurable: true,
+      get: () => liveFiles,
+    });
+    Object.defineProperty(input, "value", {
+      configurable: true,
+      get: () => (liveFiles.length ? "C:\\fakepath\\photo.jpg" : ""),
+      set: () => {
+        // Mutates the SAME array in place — any reference captured earlier
+        // (e.g. `const files = event.target.files`) observes length 0 too,
+        // exactly like a real live FileList.
+        liveFiles.length = 0;
+      },
+    });
+
+    fireEvent.change(input);
+
+    await waitFor(() => expect(addProductPhotoMock).toHaveBeenCalledTimes(1));
+    expect(addProductPhotoMock).toHaveBeenCalledWith("p1", file);
+    expect(await screen.findByText("1 / 10")).toBeInTheDocument();
   });
 
   it("resizes each file before uploading and sends the resized file, not the original, to addProductPhoto", async () => {

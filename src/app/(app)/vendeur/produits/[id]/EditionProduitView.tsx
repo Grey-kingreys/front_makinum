@@ -156,11 +156,13 @@ export function EditionProduitView({ productId }: EditionProduitViewProps) {
 
   /** Envoi séquentiel : un fichier à la fois, indicateur (et erreur) propre à chacun. */
   async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
-    const files = event.target.files;
-    event.target.value = "";
-    if (!files || files.length === 0) return;
+    // `event.target.files` est une FileList VIVANTE : remettre `value` à "" la
+    // vide aussi (même objet) — il faut donc la copier AVANT, jamais après.
+    const fichiers = Array.from(event.target.files ?? []);
+    event.target.value = ""; // permet de resélectionner le(s) même(s) fichier(s)
+    if (fichiers.length === 0) return;
 
-    for (const file of Array.from(files)) {
+    for (const file of fichiers) {
       const key = `${file.name}-${file.size}-${Date.now()}-${Math.random()}`;
       const previewUrl = URL.createObjectURL(file);
       setPendingUploads((prev) => [...prev, { key, file, previewUrl, status: "uploading" }]);
