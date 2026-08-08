@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { Alert, Button, Input, PasswordInput } from "@/components/ui";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -86,6 +87,8 @@ export function ConnexionForm() {
         Se connecter
       </h1>
       <p className="mb-6 text-[14.5px] text-brand-subtle">Avec ton email ou ton numéro vérifié.</p>
+
+      <GoogleAuthButton />
 
       {recoverySuccess ? (
         <Alert variant="success" className="mb-5">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { Alert, Button, Input, PasswordInput } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { ApiError, apiFetch } from "@/lib/api";
@@ -106,6 +107,8 @@ export function InscriptionForm() {
       <p className="mb-6 text-[14.5px] text-brand-subtle">
         Tes informations — un code de vérification suivra par email.
       </p>
+
+      <GoogleAuthButton />
 
       {error ? (
         <Alert variant="danger" className="mb-5">

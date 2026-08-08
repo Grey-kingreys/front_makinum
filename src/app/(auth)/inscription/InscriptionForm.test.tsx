@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError } from "@/lib/api";
+import { ApiError, getApiBaseUrl } from "@/lib/api";
 import { AuthProvider, resetSession } from "@/lib/auth";
 import type { PublicUser } from "@/lib/auth/types";
 
@@ -90,6 +90,13 @@ describe("InscriptionForm", () => {
     renderForm();
 
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/dashboard"));
+  });
+
+  it("shows a 'Continuer avec Google' link pointing at GET /auth/google", () => {
+    renderForm();
+
+    const link = screen.getByRole("link", { name: /continuer avec google/i });
+    expect(link).toHaveAttribute("href", `${getApiBaseUrl()}/auth/google`);
   });
 
   it("registers as ACHETEUR by default (telephone optional) and redirects to /verification?email=… on success", async () => {
