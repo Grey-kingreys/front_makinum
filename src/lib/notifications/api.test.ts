@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getApiBaseUrl } from "@/lib/api";
-import { clearToken } from "@/lib/auth/token";
+import { resetSession } from "@/lib/auth/session";
 
 import { listNotifications, markAllNotificationsRead, markNotificationRead } from "./api";
 
@@ -19,7 +19,7 @@ function jsonResponse(body: unknown, init: { ok?: boolean; status?: number } = {
 describe("notifications/api", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
-    clearToken();
+    resetSession();
   });
 
   afterEach(() => {

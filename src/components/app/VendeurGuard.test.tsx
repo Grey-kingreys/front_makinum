@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, resetSession } from "@/lib/auth";
 import type { PublicUser } from "@/lib/auth/types";
 
 import { VendeurGuard } from "./VendeurGuard";
@@ -42,9 +42,9 @@ function makeUser(overrides: Partial<PublicUser> = {}): PublicUser {
 }
 
 function renderGuard(user: PublicUser) {
-  window.localStorage.setItem("makinum.accessToken", "existing-token");
+  // Session restaurée au montage par POST /auth/refresh (T28).
   const fetchMock = fetch as unknown as FetchMock;
-  fetchMock.mockResolvedValueOnce(jsonResponse(user));
+  fetchMock.mockResolvedValueOnce(jsonResponse({ accessToken: "restored-token", user }));
 
   return render(
     <AuthProvider>
@@ -57,13 +57,14 @@ function renderGuard(user: PublicUser) {
 
 describe("VendeurGuard", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    resetSession();
     vi.stubGlobal("fetch", vi.fn());
     replaceMock.mockClear();
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    resetSession();
   });
 
   it("renders the vendor content for a VENDEUR user", async () => {

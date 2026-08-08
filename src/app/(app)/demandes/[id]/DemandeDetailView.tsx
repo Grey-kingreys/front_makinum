@@ -19,7 +19,7 @@ interface DemandeDetailViewProps {
  * carte de liste (DemandeCard partagé), pour un lien direct (ex. « Voir ma
  * demande » depuis la fiche produit après ajout). Fetch client-side (comme
  * EditionProduitView, ../vendeur/produits/[id]/EditionProduitView.tsx) : le
- * jeton de session (localStorage) n'existe pas côté serveur, GET /demandes/:id
+ * jeton de session (en mémoire) n'existe pas côté serveur, GET /demandes/:id
  * exige un JWT — donc pas de Server Component ici, et un 404 « propre »
  * local plutôt que le notFound() de Next (réservé aux fetchs serveur).
  */

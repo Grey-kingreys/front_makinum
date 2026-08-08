@@ -1,9 +1,9 @@
 import type { GeoPosition } from "./types";
 
 /**
- * Position mémorisée en sessionStorage (pas localStorage) : une position
- * géographique n'a de sens que pour l'onglet/session en cours — contrairement
- * au jeton de session (src/lib/auth/token.ts) qui doit survivre au reload.
+ * Position mémorisée en sessionStorage : une position géographique n'a de
+ * sens que pour l'onglet en cours, et n'a aucune raison d'être conservée
+ * au-delà de sa fermeture.
  */
 const STORAGE_KEY = "makinum.position";
 

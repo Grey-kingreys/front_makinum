@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, getAccessToken, resetSession } from "@/lib/auth";
 import type { PublicUser } from "@/lib/auth/types";
 
 import { AppShell } from "./AppShell";
@@ -65,7 +65,7 @@ function renderShell() {
 
 describe("AppShell", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    resetSession();
     window.sessionStorage.clear();
     vi.stubGlobal("fetch", vi.fn());
     replaceMock.mockClear();
@@ -77,9 +77,19 @@ describe("AppShell", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    resetSession();
   });
 
   it("redirects to /connexion when no session is loaded", async () => {
+    const fetchMock = fetch as unknown as FetchMock;
+    // POST /auth/refresh au montage : pas de cookie valide → visiteur anonyme.
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { code: "INVALID_REFRESH_TOKEN", message: "Session expirée" },
+        { ok: false, status: 401 },
+      ),
+    );
+
     renderShell();
 
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/connexion"));
@@ -87,9 +97,10 @@ describe("AppShell", () => {
   });
 
   it("renders the sidebar (active link) and the page content once a session is restored", async () => {
-    window.localStorage.setItem("makinum.accessToken", "existing-token");
     const fetchMock = fetch as unknown as FetchMock;
-    fetchMock.mockResolvedValueOnce(jsonResponse(DEMO_USER));
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ accessToken: "restored-token", user: DEMO_USER }),
+    ); // POST /auth/refresh (restauration de session au montage)
     fetchMock.mockResolvedValueOnce(jsonResponse([])); // GET /demandes?vue=acheteur (DemandesProvider)
     fetchMock.mockResolvedValueOnce(jsonResponse([])); // GET /demandes?vue=vendeur (DemandesRecuesProvider)
 
@@ -106,11 +117,13 @@ describe("AppShell", () => {
   });
 
   it("logout() clears the session and redirects to the landing page", async () => {
-    window.localStorage.setItem("makinum.accessToken", "existing-token");
     const fetchMock = fetch as unknown as FetchMock;
-    fetchMock.mockResolvedValueOnce(jsonResponse(DEMO_USER));
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ accessToken: "restored-token", user: DEMO_USER }),
+    ); // POST /auth/refresh (restauration de session au montage)
     fetchMock.mockResolvedValueOnce(jsonResponse([])); // GET /demandes?vue=acheteur (DemandesProvider)
     fetchMock.mockResolvedValueOnce(jsonResponse([])); // GET /demandes?vue=vendeur (DemandesRecuesProvider)
+    fetchMock.mockResolvedValue(jsonResponse({ message: "Déconnecté" })); // POST /auth/logout
 
     const user = userEvent.setup();
     renderShell();
@@ -119,6 +132,11 @@ describe("AppShell", () => {
     await user.click(screen.getByText("Se déconnecter"));
 
     expect(pushMock).toHaveBeenCalledWith("/");
-    expect(window.localStorage.getItem("makinum.accessToken")).toBeNull();
+    expect(getAccessToken()).toBeNull();
+    await waitFor(() =>
+      expect(
+        (fetchMock.mock.calls as [string][]).some(([url]) => String(url).endsWith("/auth/logout")),
+      ).toBe(true),
+    );
   });
 });

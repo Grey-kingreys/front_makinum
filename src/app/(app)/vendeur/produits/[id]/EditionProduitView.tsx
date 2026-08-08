@@ -72,8 +72,9 @@ interface EditionProduitViewProps {
  * titre/description/prix/catégorie/position (mêmes champs que la création,
  * ProductForm partagé) + gestion des photos (grille, upload multiple
  * séquentiel, suppression, réordonnancement ← →). Client component (pas de
- * fetch côté Server Component) : le jeton de session vit en localStorage
- * (T13), inaccessible pendant le rendu serveur — voir src/lib/auth/token.ts.
+ * fetch côté Server Component) : le jeton de session vit en mémoire du
+ * document (T28), inaccessible pendant le rendu serveur — voir
+ * src/lib/auth/session.ts.
  */
 export function EditionProduitView({ productId }: EditionProduitViewProps) {
   const [product, setProduct] = useState<ProductView | null>(null);

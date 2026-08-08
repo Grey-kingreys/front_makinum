@@ -2,7 +2,18 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import Page from "@/app/page";
-import { AuthProvider } from "@/lib/auth";
+import { ApiError } from "@/lib/api";
+import { AuthProvider, resetSession } from "@/lib/auth";
+
+const { refreshSessionMock } = vi.hoisted(() => ({ refreshSessionMock: vi.fn() }));
+
+// T28 : l'AuthProvider restaure la session au montage via POST /auth/refresh.
+// La landing se rend pour un visiteur anonyme — on neutralise l'appel plutôt
+// que de monter un mock réseau ici.
+vi.mock("@/lib/api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
+  return { ...actual, refreshSession: refreshSessionMock };
+});
 
 // CategoryGrid (rendu par Page) est un composant serveur async (T31b, fetch
 // GET /categories) — le renderer client de react-dom utilisé par Testing
@@ -16,9 +27,8 @@ vi.mock("@/components/landing/CategoryGrid", () => ({
 
 // LandingHeader (rendu par Page) est auth-aware (useAuth()) : comme dans la
 // vraie app (AuthProvider monté au root layout, src/app/layout.tsx), il faut
-// un AuthProvider dans l'arbre. Sans jeton en localStorage, la session
-// démarre déconnectée sans fetch (voir AuthProvider.tsx) : pas de mock réseau
-// nécessaire ici.
+// un AuthProvider dans l'arbre. Le rafraîchissement de session étant neutralisé
+// ci-dessus, la session démarre et reste déconnectée.
 function renderPage() {
   return render(
     <AuthProvider>
@@ -29,7 +39,11 @@ function renderPage() {
 
 describe("Landing page", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    resetSession();
+    refreshSessionMock.mockReset();
+    refreshSessionMock.mockRejectedValue(
+      new ApiError(401, "Session expirée", "INVALID_REFRESH_TOKEN"),
+    );
   });
 
   it("renders the hero heading", () => {

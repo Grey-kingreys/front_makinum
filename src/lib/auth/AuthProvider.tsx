@@ -10,8 +10,12 @@ import {
   type ReactNode,
 } from "react";
 
-import { apiFetch } from "@/lib/api";
-import { clearToken, getToken, setToken } from "@/lib/auth/token";
+import { apiFetch, refreshSession } from "@/lib/api";
+import {
+  clearAccessToken,
+  onSessionExpired,
+  setAccessToken,
+} from "@/lib/auth/session";
 import type { LoginResponse, PublicUser } from "@/lib/auth/types";
 
 export interface AuthContextValue {
@@ -24,30 +28,33 @@ export interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-/** GET /auth/me ; efface le jeton et renvoie `null` s'il est absent/invalide. */
+/** GET /auth/me ; renvoie `null` si la session n'est plus exploitable. */
 async function fetchCurrentUser(): Promise<PublicUser | null> {
-  if (!getToken()) return null;
   try {
     return await apiFetch<PublicUser>("/auth/me", { method: "GET" });
   } catch {
-    clearToken();
     return null;
   }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<PublicUser | null>(null);
-  // Initialisation paresseuse : s'il n'y a pas de jeton stocké, on est déjà
-  // fixé sur l'état "déconnecté" dès le premier rendu — pas besoin d'attendre
-  // un effet pour le savoir.
-  const [loading, setLoading] = useState<boolean>(() => getToken() !== null);
+  // Le jeton d'accès vit en mémoire seule (T28) : après un rechargement il
+  // n'y a plus rien à inspecter localement, et le cookie de rafraîchissement
+  // est httpOnly. Impossible donc de trancher sans appeler le serveur — on
+  // démarre toujours en chargement, et les gardes de route (AppShell,
+  // /connexion) attendent au lieu de rediriger à tort.
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!getToken()) return;
     let cancelled = false;
-    fetchCurrentUser()
-      .then((me) => {
+    refreshSession()
+      .then(({ user: me }) => {
         if (!cancelled) setUser(me);
+      })
+      .catch(() => {
+        // 401 INVALID_REFRESH_TOKEN = simple visiteur non connecté : c'est le
+        // cas nominal, aucune erreur à afficher.
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -57,6 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     // Restauration de session au montage uniquement.
   }, []);
+
+  // Rafraîchissement refusé en cours de navigation (cookie expiré ou
+  // révoqué) : l'application bascule en déconnecté, AppShell renvoie alors
+  // vers /connexion.
+  useEffect(() => onSessionExpired(() => setUser(null)), []);
 
   const refresh = useCallback(async () => {
     const me = await fetchCurrentUser();
@@ -69,13 +81,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: { identifiant, motDePasse },
       skipAuth: true,
     });
-    setToken(accessToken);
+    setAccessToken(accessToken);
     setUser(loggedInUser);
     return loggedInUser;
   }, []);
 
   const logout = useCallback(() => {
-    clearToken();
+    // Révocation serveur (efface le cookie de rafraîchissement) lancée avec
+    // le jeton encore en mémoire — `apiFetch` compose ses en-têtes de façon
+    // synchrone. L'échec réseau ne doit pas retenir la déconnexion locale,
+    // qui est immédiate et inconditionnelle.
+    void apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
+    clearAccessToken();
     setUser(null);
   }, []);
 

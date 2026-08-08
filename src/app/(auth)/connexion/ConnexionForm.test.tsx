@@ -2,23 +2,33 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AuthProvider } from "@/lib/auth";
+import { ApiError } from "@/lib/api";
+import { AuthProvider, resetSession } from "@/lib/auth";
 import type { PublicUser } from "@/lib/auth/types";
 
 import { ConnexionForm } from "./ConnexionForm";
 
 type FetchMock = ReturnType<typeof vi.fn>;
 
-const { pushMock, replaceMock, useSearchParamsMock } = vi.hoisted(() => ({
+const { pushMock, replaceMock, useSearchParamsMock, refreshSessionMock } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   replaceMock: vi.fn(),
   useSearchParamsMock: vi.fn(() => new URLSearchParams()),
+  refreshSessionMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock, replace: replaceMock }),
   useSearchParams: useSearchParamsMock,
 }));
+
+// T28 : l'AuthProvider restaure la session au montage via POST /auth/refresh.
+// On neutralise cet appel (visiteur anonyme par défaut) pour que les réponses
+// `fetch` moquées dans chaque test restent celles du formulaire lui-même.
+vi.mock("@/lib/api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
+  return { ...actual, refreshSession: refreshSessionMock };
+});
 
 function jsonResponse(body: unknown, init: { ok?: boolean; status?: number } = {}): Response {
   const { ok = true, status = 200 } = init;
@@ -54,21 +64,24 @@ function renderPage() {
 
 describe("ConnexionForm", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    resetSession();
     vi.stubGlobal("fetch", vi.fn());
     pushMock.mockClear();
     replaceMock.mockClear();
     useSearchParamsMock.mockReturnValue(new URLSearchParams());
+    refreshSessionMock.mockReset();
+    refreshSessionMock.mockRejectedValue(
+      new ApiError(401, "Session expirée", "INVALID_REFRESH_TOKEN"),
+    );
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    resetSession();
   });
 
   it("redirects an already-authenticated user straight to /dashboard", async () => {
-    window.localStorage.setItem("makinum.accessToken", "existing-token");
-    const fetchMock = fetch as unknown as FetchMock;
-    fetchMock.mockResolvedValueOnce(jsonResponse(DEMO_USER));
+    refreshSessionMock.mockResolvedValueOnce({ accessToken: "restored-token", user: DEMO_USER });
 
     renderPage();
 
