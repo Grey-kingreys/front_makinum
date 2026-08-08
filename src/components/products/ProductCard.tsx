@@ -16,8 +16,17 @@ import { VendeurBadge } from "./VendeurBadge";
  * coordonnées (le backend ne les masque plus). Dans les deux cas, le badge
  * distance est remplacé par une mention neutre au même emplacement : jamais
  * de « — km »/« 0 km » qui laisserait croire à une distance connue.
+ *
+ * Cette carte est alimentée par plusieurs sources (recherche, fiche
+ * vendeur…) qui ne respectent pas toutes exactement le contrat
+ * `ProductSearchItem` à l'exécution — un champ optionnel peut donc arriver
+ * en `undefined` plutôt qu'en `null`. Tous les champs nullables sont donc
+ * testés avec `== null` / `!= null` (comparaison lâche, volontaire) pour
+ * couvrir les deux cas et toujours retomber sur l'état de repli plutôt que
+ * d'afficher un libellé orphelin (« km » sans nombre, « ★ () » vide…).
  */
 export function ProductCard({ item }: { item: ProductSearchItem }) {
+  const hasNote = item.vendeur.noteMoyenne != null && item.vendeur.nbAvis != null;
   return (
     <Link
       href={`/produits/${item.id}`}
@@ -30,7 +39,7 @@ export function ProductCard({ item }: { item: ProductSearchItem }) {
         ) : (
           <PhotoPlaceholder />
         )}
-        {item.distanceKm !== null ? (
+        {item.distanceKm != null ? (
           <span className="absolute right-[11px] top-[11px] rounded-full bg-ink/80 px-[10px] py-[5px] text-[12px] text-cream">
             {item.distanceKm} km
           </span>
@@ -47,7 +56,7 @@ export function ProductCard({ item }: { item: ProductSearchItem }) {
           <span>{item.vendeur.nom}</span>
           <VendeurBadge statut={item.vendeur.statutVendeur} />
         </div>
-        {item.vendeur.noteMoyenne !== null ? (
+        {hasNote ? (
           <div className="text-[12.5px] text-brand-faint">
             ★ {item.vendeur.noteMoyenne} ({item.vendeur.nbAvis})
           </div>
