@@ -30,11 +30,17 @@ export interface PurchaseRequestItemView {
  * de l'acheteur (pas de statutVendeur côté acheteur, CDC §12.4). Ce champ
  * `statutVendeur` sert aussi de signal pour distinguer « mes demandes en tant
  * qu'acheteur » des demandes reçues côté vendeur — voir DemandesProvider.
+ *
+ * `telephone` (T43) : absent tant que la demande est un brouillon
+ * (`EN_COURS`), présent dès `ENVOYEE` et sur `CLOTUREE` — symétrique,
+ * acheteur et vendeur voient chacun le numéro de l'autre. Absent aussi (clé
+ * omise, jamais `null`) quand l'interlocuteur n'a pas de numéro renseigné.
  */
 export interface PurchaseRequestInterlocuteurView {
   id: string;
   nom: string;
   statutVendeur?: StatutVendeur;
+  telephone?: string;
 }
 
 export interface PurchaseRequestView {

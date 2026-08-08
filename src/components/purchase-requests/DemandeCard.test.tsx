@@ -169,6 +169,39 @@ describe("DemandeCard — avis (demande CLOTUREE)", () => {
   });
 });
 
+describe("DemandeCard — contact du vendeur (T43, perspective acheteur)", () => {
+  beforeEach(() => {
+    listPurchaseRequestsMock.mockReset();
+    listPurchaseRequestsMock.mockResolvedValue([]);
+  });
+
+  it("renders tel: and wa.me contact links when interlocuteur.telephone is present", () => {
+    renderCard(
+      makeDemande({
+        interlocuteur: {
+          id: "v1",
+          nom: "Fatoumata Bangoura",
+          statutVendeur: "VERIFIE",
+          telephone: "+224622000000",
+        },
+      }),
+    );
+
+    expect(screen.getByRole("link", { name: "Appeler" })).toHaveAttribute("href", "tel:+224622000000");
+    expect(screen.getByRole("link", { name: "WhatsApp" })).toHaveAttribute(
+      "href",
+      "https://wa.me/224622000000",
+    );
+  });
+
+  it("renders no contact block when interlocuteur.telephone is absent (brouillon)", () => {
+    renderCard(makeDemande({ statut: "EN_COURS", resultat: null }));
+
+    expect(screen.queryByRole("link", { name: "Appeler" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "WhatsApp" })).not.toBeInTheDocument();
+  });
+});
+
 describe("DemandeCard — envoi d'une demande (T36, téléphone de l'acheteur)", () => {
   beforeEach(() => {
     sendPurchaseRequestMock.mockReset();

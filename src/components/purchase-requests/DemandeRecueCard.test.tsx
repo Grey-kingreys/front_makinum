@@ -147,3 +147,31 @@ describe("DemandeRecueCard", () => {
     expect(screen.queryByRole("button", { name: /Clôturer/ })).not.toBeInTheDocument();
   });
 });
+
+describe("DemandeRecueCard — contact de l'acheteur (T43, perspective vendeur)", () => {
+  beforeEach(() => {
+    listPurchaseRequestsMock.mockReset();
+    listPurchaseRequestsMock.mockResolvedValue([]);
+  });
+
+  it("renders tel: and wa.me contact links when interlocuteur.telephone is present", () => {
+    renderCard(
+      makeDemande({
+        interlocuteur: { id: "a1", nom: "Ibrahima Diallo", telephone: "+224622111111" },
+      }),
+    );
+
+    expect(screen.getByRole("link", { name: "Appeler" })).toHaveAttribute("href", "tel:+224622111111");
+    expect(screen.getByRole("link", { name: "WhatsApp" })).toHaveAttribute(
+      "href",
+      "https://wa.me/224622111111",
+    );
+  });
+
+  it("renders no contact block when interlocuteur.telephone is absent", () => {
+    renderCard(makeDemande());
+
+    expect(screen.queryByRole("link", { name: "Appeler" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "WhatsApp" })).not.toBeInTheDocument();
+  });
+});

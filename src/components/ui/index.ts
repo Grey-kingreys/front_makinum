@@ -16,6 +16,9 @@ export type { BadgeProps, BadgeVariant } from "./Badge";
 export { Card } from "./Card";
 export type { CardProps } from "./Card";
 
+export { ContactButtons } from "./ContactButtons";
+export type { ContactButtonsProps } from "./ContactButtons";
+
 export { ConfirmDialog } from "./ConfirmDialog";
 export type { ConfirmDialogProps, ConfirmDialogVariant } from "./ConfirmDialog";
 

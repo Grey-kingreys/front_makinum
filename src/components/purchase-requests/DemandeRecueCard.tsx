@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Badge, ConfirmDialog, type BadgeVariant } from "@/components/ui";
+import { Badge, ConfirmDialog, ContactButtons, type BadgeVariant } from "@/components/ui";
 import { PhotoPlaceholder } from "@/components/products/PhotoPlaceholder";
 import { formatDate, formatPrixGNF, initialsFromName } from "@/lib/format";
 import {
@@ -110,6 +110,12 @@ export function DemandeRecueCard({ demande }: DemandeRecueCardProps) {
         </div>
         {resultatBadge}
       </div>
+
+      {demande.interlocuteur.telephone ? (
+        <div className="border-b border-beige-soft px-5 py-3.5">
+          <ContactButtons telephone={demande.interlocuteur.telephone} />
+        </div>
+      ) : null}
 
       <div>
         {demande.items.map((item) => (

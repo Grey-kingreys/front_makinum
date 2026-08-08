@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
-import { Alert } from "@/components/ui";
+import { Alert, ContactButtons } from "@/components/ui";
 import { PhotoPlaceholder } from "@/components/products/PhotoPlaceholder";
 import { VendeurBadge } from "@/components/products/VendeurBadge";
 import { ReportProductAction } from "@/components/reports/ReportProductAction";
@@ -51,7 +51,6 @@ export function ProductDetail({ product }: { product: ProductView }) {
       : null;
 
   const telephone = product.vendeur.telephone;
-  const whatsappNumber = telephone ? telephone.replace(/\D/g, "") : null;
 
   async function handleAdd() {
     setAdding(true);
@@ -227,24 +226,7 @@ export function ProductDetail({ product }: { product: ProductView }) {
                 </>
               )}
 
-              {telephone ? (
-                <div className="grid grid-cols-2 gap-2.5">
-                  <a
-                    href={`tel:${telephone}`}
-                    className="rounded-[11px] border border-border-strong bg-white px-4 py-[13px] text-center text-[14px] text-ink transition-colors hover:border-brand"
-                  >
-                    Appeler
-                  </a>
-                  <a
-                    href={`https://wa.me/${whatsappNumber}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-[11px] border border-border-strong bg-white px-4 py-[13px] text-center text-[14px] text-ink transition-colors hover:border-brand"
-                  >
-                    WhatsApp
-                  </a>
-                </div>
-              ) : null}
+              {telephone ? <ContactButtons telephone={telephone} /> : null}
 
               <p className="mt-4 text-[12.5px] leading-[1.55] text-brand-faint">
                 Ajouter n&apos;engage aucun paiement : le vendeur reçoit une notification et vous

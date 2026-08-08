@@ -5,11 +5,9 @@ import Link from "next/link";
 import { ProductCard } from "@/components/products/ProductCard";
 import { VendeurBadge } from "@/components/products/VendeurBadge";
 import { VendorReviewsSection } from "@/components/reviews/VendorReviewsSection";
+import { ContactButtons } from "@/components/ui";
 import { initialsFromName } from "@/lib/format";
 import type { VendorDetail as VendorDetailData } from "@/lib/vendors/types";
-
-const CONTACT_BUTTON_CLASSES =
-  "rounded-[11px] border border-border-strong bg-white px-4 py-[13px] text-center text-[14px] text-ink transition-colors hover:border-brand";
 
 /**
  * Fiche vendeur publique (/vendeurs/[id], T39) : identité (nom, badge, note
@@ -24,7 +22,6 @@ const CONTACT_BUTTON_CLASSES =
  */
 export function VendeurDetail({ vendor }: { vendor: VendorDetailData }) {
   const telephone = vendor.telephone;
-  const whatsappNumber = telephone ? telephone.replace(/\D/g, "") : null;
 
   return (
     <div className="mx-auto max-w-[1280px] px-6 pb-[60px] pt-[26px] sm:px-8 lg:px-10">
@@ -62,19 +59,7 @@ export function VendeurDetail({ vendor }: { vendor: VendorDetailData }) {
 
         <div className="sm:w-[260px] sm:shrink-0">
           {telephone ? (
-            <div className="grid grid-cols-2 gap-2.5">
-              <a href={`tel:${telephone}`} className={CONTACT_BUTTON_CLASSES}>
-                Appeler
-              </a>
-              <a
-                href={`https://wa.me/${whatsappNumber}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={CONTACT_BUTTON_CLASSES}
-              >
-                WhatsApp
-              </a>
-            </div>
+            <ContactButtons telephone={telephone} />
           ) : (
             <div className="rounded-[11px] border border-dashed border-border-strong bg-cream-alt px-4 py-3.5 text-center text-[13px] leading-relaxed text-brand-subtle">
               <Link href="/connexion" className="font-medium text-brand-vivid underline">
