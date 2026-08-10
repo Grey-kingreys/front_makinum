@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 import { Alert, Badge, Button, ConfirmDialog, Input, type BadgeVariant } from "@/components/ui";
 import {
+  deleteAdminUser,
   describeAdminUserError,
   describeConvertVendeurFormError,
   listAdminUsers,
@@ -69,6 +70,8 @@ interface RowState {
   pendingValidation: boolean;
   /** T48b : conversion ACHETEUR → VENDEUR (PATCH { role: "VENDEUR" }) en vol. */
   pendingConvert: boolean;
+  /** T49b : suppression du compte (DELETE /admin/utilisateurs/:id) en vol. */
+  pendingDelete: boolean;
   error: string | null;
 }
 
@@ -77,6 +80,7 @@ const DEFAULT_ROW_STATE: RowState = {
   pendingCompte: false,
   pendingValidation: false,
   pendingConvert: false,
+  pendingDelete: false,
   error: null,
 };
 
@@ -88,6 +92,7 @@ function UserRow({
   onToggleCompte,
   onValider,
   onConvertToVendeur,
+  onDelete,
 }: {
   user: AdminUserView;
   currentAdminId: string;
@@ -96,6 +101,7 @@ function UserRow({
   onToggleCompte: () => void;
   onValider: () => void;
   onConvertToVendeur: () => void;
+  onDelete: () => void;
 }) {
   const isSelf = user.id === currentAdminId;
   const suspendu = user.statutCompte === "SUSPENDU";
@@ -185,6 +191,17 @@ function UserRow({
           >
             {rowState.pendingCompte ? "…" : suspendu ? "Réactiver" : "Suspendre"}
           </Button>
+
+          {user.role !== "ADMIN" ? (
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={onDelete}
+              disabled={rowState.pendingDelete}
+            >
+              {rowState.pendingDelete ? "…" : "Supprimer"}
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -198,7 +215,8 @@ function UserRow({
 type ConfirmAction =
   | { kind: "toggleCompte"; target: AdminUserView }
   | { kind: "validerVendeur"; target: AdminUserView }
-  | { kind: "convertToVendeur"; target: AdminUserView };
+  | { kind: "convertToVendeur"; target: AdminUserView }
+  | { kind: "deleteUser"; target: AdminUserView };
 
 /**
  * « Utilisateurs » (/admin/vendeurs) — écran isSellers du prototype
@@ -215,7 +233,13 @@ type ConfirmAction =
  * /devenir-vendeur) ouvre une modale demandant le téléphone de la cible
  * seulement si elle n'en a pas déjà un, avec une case « Valider
  * immédiatement » qui ajoute `vendeurValide: true` au même PATCH
- * (conversion + validation en un seul appel).
+ * (conversion + validation en un seul appel). Sur toute ligne NON-admin,
+ * « Supprimer » (T49b, DELETE /admin/utilisateurs/:id) ouvre une modale de
+ * confirmation en variante danger avant d'exécuter la suppression
+ * définitive du compte ; le backend la refuse (409 USER_HAS_HISTORY) si le
+ * compte a un historique (produits, demandes, avis ou signalements), auquel
+ * cas la modale se ferme et une suggestion de suspension s'affiche sur la
+ * ligne.
  */
 export function VendeursView() {
   const { user: currentAdmin } = useAuth();
@@ -339,6 +363,10 @@ export function VendeursView() {
     setConfirmAction({ kind: "convertToVendeur", target });
   }
 
+  function handleDeleteUser(target: AdminUserView) {
+    setConfirmAction({ kind: "deleteUser", target });
+  }
+
   async function confirmToggleCompte(target: AdminUserView) {
     const suspendu = target.statutCompte === "SUSPENDU";
 
@@ -410,6 +438,28 @@ export function VendeursView() {
     }
   }
 
+  /**
+   * DELETE /admin/utilisateurs/:id (T49b), puis rafraîchit la liste au
+   * succès (le compte supprimé disparaît). Même motif que
+   * confirmToggleCompte/confirmValiderVendeur : la modale s'est déjà fermée
+   * avant l'appel (handleConfirm), une erreur (ex. USER_HAS_HISTORY) reste
+   * affichée sur la ligne.
+   */
+  async function confirmDeleteUser(target: AdminUserView) {
+    patchRowState(target.id, { pendingDelete: true, error: null });
+    try {
+      await deleteAdminUser(target.id);
+      await fetchPage(1, false);
+    } catch (err) {
+      patchRowState(target.id, {
+        pendingDelete: false,
+        error: describeAdminUserError(err, "Impossible de supprimer ce compte."),
+      });
+      return;
+    }
+    patchRowState(target.id, { pendingDelete: false });
+  }
+
   async function handleConfirm() {
     const action = confirmAction;
     if (!action) return;
@@ -422,6 +472,11 @@ export function VendeursView() {
     if (action.kind === "validerVendeur") {
       setConfirmAction(null);
       await confirmValiderVendeur(action.target);
+      return;
+    }
+    if (action.kind === "deleteUser") {
+      setConfirmAction(null);
+      await confirmDeleteUser(action.target);
       return;
     }
 
@@ -553,6 +608,7 @@ export function VendeursView() {
               onToggleCompte={() => handleToggleCompte(item)}
               onValider={() => handleValiderVendeur(item)}
               onConvertToVendeur={() => handleConvertToVendeur(item)}
+              onDelete={() => handleDeleteUser(item)}
             />
           ))}
         </div>
@@ -573,9 +629,11 @@ export function VendeursView() {
             ? "Valider ce vendeur ?"
             : confirmAction?.kind === "convertToVendeur"
               ? "Passer ce compte vendeur ?"
-              : confirmAction?.target.statutCompte === "SUSPENDU"
-                ? "Réactiver ce compte ?"
-                : "Suspendre ce compte ?"
+              : confirmAction?.kind === "deleteUser"
+                ? "Supprimer ce compte ?"
+                : confirmAction?.target.statutCompte === "SUSPENDU"
+                  ? "Réactiver ce compte ?"
+                  : "Suspendre ce compte ?"
         }
         description={
           confirmAction?.kind === "validerVendeur" ? (
@@ -613,6 +671,8 @@ export function VendeursView() {
                 Valider immédiatement
               </label>
             </div>
+          ) : confirmAction?.kind === "deleteUser" ? (
+            `Supprimer définitivement le compte de ${confirmAction.target.nom} ? Cette action est irréversible : la personne devra se réinscrire pour utiliser Makinum. La suppression sera refusée si le compte a un historique (produits, demandes, avis ou signalements) — suspends-le plutôt dans ce cas.`
           ) : confirmAction ? (
             toggleCompteMessage(confirmAction.target)
           ) : null
@@ -622,16 +682,20 @@ export function VendeursView() {
             ? "Valider"
             : confirmAction?.kind === "convertToVendeur"
               ? "Passer vendeur"
-              : confirmAction?.target.statutCompte === "SUSPENDU"
-                ? "Réactiver"
-                : "Suspendre"
+              : confirmAction?.kind === "deleteUser"
+                ? "Supprimer"
+                : confirmAction?.target.statutCompte === "SUSPENDU"
+                  ? "Réactiver"
+                  : "Suspendre"
         }
         variant={
-          confirmAction?.kind === "validerVendeur" ||
-          confirmAction?.kind === "convertToVendeur" ||
-          confirmAction?.target.statutCompte === "SUSPENDU"
+          confirmAction?.kind === "validerVendeur" || confirmAction?.kind === "convertToVendeur"
             ? "default"
-            : "danger"
+            : confirmAction?.kind === "deleteUser"
+              ? "danger"
+              : confirmAction?.target.statutCompte === "SUSPENDU"
+                ? "default"
+                : "danger"
         }
         busy={confirmAction?.kind === "convertToVendeur" && rowStateFor(confirmAction.target.id).pendingConvert}
         onConfirm={handleConfirm}

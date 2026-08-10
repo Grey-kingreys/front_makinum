@@ -8,16 +8,19 @@ import type { PublicUser } from "@/lib/auth/types";
 
 import { VendeursView } from "./VendeursView";
 
-const { listAdminUsersMock, updateAdminUserMock, useAuthMock, useSearchParamsMock } = vi.hoisted(() => ({
-  listAdminUsersMock: vi.fn(),
-  updateAdminUserMock: vi.fn(),
-  useAuthMock: vi.fn(),
-  useSearchParamsMock: vi.fn(() => new URLSearchParams()),
-}));
+const { listAdminUsersMock, updateAdminUserMock, deleteAdminUserMock, useAuthMock, useSearchParamsMock } =
+  vi.hoisted(() => ({
+    listAdminUsersMock: vi.fn(),
+    updateAdminUserMock: vi.fn(),
+    deleteAdminUserMock: vi.fn(),
+    useAuthMock: vi.fn(),
+    useSearchParamsMock: vi.fn(() => new URLSearchParams()),
+  }));
 
 vi.mock("@/lib/admin/api", () => ({
   listAdminUsers: listAdminUsersMock,
   updateAdminUser: updateAdminUserMock,
+  deleteAdminUser: deleteAdminUserMock,
 }));
 
 vi.mock("@/lib/auth", () => ({ useAuth: useAuthMock }));
@@ -599,5 +602,163 @@ describe("VendeursView — conversion ACHETEUR → VENDEUR (T48b, action admin �
     expect(
       await screen.findByText("Impossible de convertir un compte administrateur en vendeur."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("VendeursView — suppression de compte (T49b, DELETE /admin/utilisateurs/:id)", () => {
+  beforeEach(() => {
+    listAdminUsersMock.mockReset();
+    updateAdminUserMock.mockReset();
+    deleteAdminUserMock.mockReset();
+    listAdminUsersMock.mockResolvedValue({ items: [makeUser()], total: 1, page: 1, limit: 20 });
+    useAuthMock.mockReset();
+    useAuthMock.mockReturnValue({ user: makeAdmin(), loading: false, login: vi.fn(), logout: vi.fn(), refresh: vi.fn() });
+    useSearchParamsMock.mockReset();
+    useSearchParamsMock.mockReturnValue(new URLSearchParams());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("shows a « Supprimer » button on non-admin rows (VENDEUR, ACHETEUR)", async () => {
+    listAdminUsersMock.mockResolvedValue({
+      items: [
+        makeUser({ id: "v1", nom: "Fatoumata Bangoura", role: "VENDEUR" }),
+        makeUser({ id: "a1", nom: "Amadou Diallo", role: "ACHETEUR" }),
+      ],
+      total: 2,
+      page: 1,
+      limit: 20,
+    });
+    render(<VendeursView />);
+
+    await screen.findByText("Fatoumata Bangoura");
+    expect(screen.getAllByRole("button", { name: "Supprimer" })).toHaveLength(2);
+  });
+
+  it("does not show a « Supprimer » button on ADMIN rows", async () => {
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ id: "admin-2", nom: "Mariame Camara", role: "ADMIN" })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    render(<VendeursView />);
+
+    await screen.findByText("Mariame Camara");
+    expect(screen.queryByRole("button", { name: "Supprimer" })).not.toBeInTheDocument();
+  });
+
+  it("opens a danger confirmation dialog mentioning irreversibility before calling the API", async () => {
+    const user = userEvent.setup();
+    render(<VendeursView />);
+    await screen.findByText("Fatoumata Bangoura");
+
+    await user.click(screen.getByRole("button", { name: "Supprimer" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Supprimer ce compte ?");
+    expect(dialog).toHaveTextContent(/irréversible/);
+    expect(dialog).toHaveTextContent(/se réinscrire/);
+    expect(dialog).toHaveTextContent(/historique/);
+    const confirmButton = within(dialog).getByRole("button", { name: "Supprimer" });
+    expect(confirmButton.className).toContain("bg-danger");
+    expect(deleteAdminUserMock).not.toHaveBeenCalled();
+  });
+
+  it("does not call the API when the delete confirmation is cancelled", async () => {
+    const user = userEvent.setup();
+    render(<VendeursView />);
+    await screen.findByText("Fatoumata Bangoura");
+
+    await user.click(screen.getByRole("button", { name: "Supprimer" }));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: "Annuler" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(deleteAdminUserMock).not.toHaveBeenCalled();
+  });
+
+  it("deletes the account on confirm (204) then refreshes the list", async () => {
+    const user = userEvent.setup();
+    deleteAdminUserMock.mockResolvedValueOnce(undefined);
+    render(<VendeursView />);
+    await screen.findByText("Fatoumata Bangoura");
+    listAdminUsersMock.mockResolvedValueOnce({ items: [], total: 0, page: 1, limit: 20 });
+
+    await user.click(screen.getByRole("button", { name: "Supprimer" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+
+    await waitFor(() => expect(deleteAdminUserMock).toHaveBeenCalledWith("v1"));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // Rafraîchit la liste après succès : le compte supprimé disparaît.
+    await waitFor(() => expect(listAdminUsersMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByText("Fatoumata Bangoura")).not.toBeInTheDocument());
+  });
+
+  it("maps USER_HAS_HISTORY to a row-level error suggesting suspension instead", async () => {
+    const user = userEvent.setup();
+    deleteAdminUserMock.mockRejectedValueOnce(
+      new ApiError(
+        409,
+        "Ce compte a un historique (produits, demandes, avis ou signalements) : suspendez-le plutôt que de le supprimer",
+        "USER_HAS_HISTORY",
+      ),
+    );
+    render(<VendeursView />);
+    await screen.findByText("Fatoumata Bangoura");
+
+    await user.click(screen.getByRole("button", { name: "Supprimer" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Ce compte a un historique (produits, demandes, avis ou signalements) : suspends-le plutôt que de le supprimer.",
+      ),
+    ).toBeInTheDocument();
+    // Le compte reste dans la liste (la suppression a été refusée).
+    expect(screen.getByText("Fatoumata Bangoura")).toBeInTheDocument();
+  });
+
+  it("maps CANNOT_DELETE_ADMIN to a row-level error", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ id: "v1", nom: "Fatoumata Bangoura", role: "VENDEUR" })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    deleteAdminUserMock.mockRejectedValueOnce(
+      new ApiError(400, "Impossible de supprimer un compte administrateur", "CANNOT_DELETE_ADMIN"),
+    );
+    render(<VendeursView />);
+    await screen.findByText("Fatoumata Bangoura");
+
+    await user.click(screen.getByRole("button", { name: "Supprimer" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+
+    expect(
+      await screen.findByText("Impossible de supprimer un compte administrateur."),
+    ).toBeInTheDocument();
+  });
+
+  it("maps USER_NOT_FOUND to a row-level error when the account was already deleted", async () => {
+    const user = userEvent.setup();
+    deleteAdminUserMock.mockRejectedValueOnce(
+      new ApiError(404, "Utilisateur introuvable", "USER_NOT_FOUND"),
+    );
+    render(<VendeursView />);
+    await screen.findByText("Fatoumata Bangoura");
+
+    await user.click(screen.getByRole("button", { name: "Supprimer" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+
+    expect(await screen.findByText("Cet utilisateur est introuvable.")).toBeInTheDocument();
   });
 });

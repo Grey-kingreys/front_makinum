@@ -27,6 +27,11 @@ export function describeAdminUserError(
         return "Ce compte est déjà un compte vendeur.";
       case "CANNOT_CONVERT_ADMIN":
         return "Impossible de convertir un compte administrateur en vendeur.";
+      // Suppression de compte (T49b, DELETE /admin/utilisateurs/:id).
+      case "USER_HAS_HISTORY":
+        return "Ce compte a un historique (produits, demandes, avis ou signalements) : suspends-le plutôt que de le supprimer.";
+      case "CANNOT_DELETE_ADMIN":
+        return "Impossible de supprimer un compte administrateur.";
       default:
         return error.message || fallback;
     }

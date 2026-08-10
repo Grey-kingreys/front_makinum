@@ -90,3 +90,20 @@ export function updateAdminUser(
     body: input,
   });
 }
+
+/**
+ * DELETE /admin/utilisateurs/:id (T49b) — 204 sans corps au succès (les
+ * notifications du compte sont purgées et ses sessions révoquées côté
+ * serveur ; `apiFetch` traite un 204 comme n'importe quelle réponse `ok`
+ * sans corps, cf. `parseResponseBody`). Peut échouer avec USER_HAS_HISTORY
+ * (409, le compte a au moins un produit, une demande, un avis ou un
+ * signalement — à suspendre plutôt qu'à supprimer), CANNOT_DELETE_ADMIN
+ * (400, cible admin — l'UI ne propose déjà pas l'action sur ces lignes) ou
+ * USER_NOT_FOUND (404, supprimé entre le rendu et le clic) — voir
+ * describeAdminUserError.
+ */
+export function deleteAdminUser(id: string): Promise<void> {
+  return apiFetch<void>(`/admin/utilisateurs/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
