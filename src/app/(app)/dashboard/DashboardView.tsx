@@ -61,7 +61,7 @@ const VENDEUR_ACTIONS: QuickAction[] = [
 
 const ADMIN_ACTIONS: QuickAction[] = [
   { href: "/admin/moderation", label: "Modération" },
-  { href: "/admin/vendeurs", label: "Vendeurs" },
+  { href: "/admin/vendeurs", label: "Utilisateurs" },
 ];
 
 interface StatTileProps {

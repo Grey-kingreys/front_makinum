@@ -186,14 +186,14 @@ describe("Sidebar", () => {
     expect(screen.getByText("fatoumata@exemple.gn")).toBeInTheDocument();
   });
 
-  it("shows the ADMIN nav (File de modération, Vendeurs, Catégories) for an admin", async () => {
+  it("shows the ADMIN nav (File de modération, Utilisateurs, Catégories) for an admin", async () => {
     await renderSidebar(makeUser({ role: "ADMIN" }));
 
     expect(screen.getByRole("link", { name: "File de modération" })).toHaveAttribute(
       "href",
       "/admin/moderation",
     );
-    expect(screen.getByRole("link", { name: "Vendeurs" })).toHaveAttribute("href", "/admin/vendeurs");
+    expect(screen.getByRole("link", { name: "Utilisateurs" })).toHaveAttribute("href", "/admin/vendeurs");
     expect(screen.getByRole("link", { name: "Catégories" })).toHaveAttribute(
       "href",
       "/admin/categories",

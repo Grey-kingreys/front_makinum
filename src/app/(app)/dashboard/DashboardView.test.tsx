@@ -100,9 +100,18 @@ function makeProduct(overrides: Partial<ProductView> = {}): ProductView {
 }
 
 function tileFor(label: string): HTMLElement {
-  const el = screen.getByText(label).closest("a");
-  if (!el) throw new Error(`Tuile « ${label} » introuvable (pas de <a> parent).`);
-  return el;
+  // Cherche une tuile avec le label exact (structure StatTile avec <a><div valeur</div><div label</div></a>).
+  // Évite les collisions avec d'autres éléments qui contiendraient le même texte (ex. liens rapides).
+  const candidates = screen.queryAllByText(label);
+  const tileLink = candidates
+    .map((el) => el.closest("a"))
+    .find((link) => {
+      if (!link) return false;
+      // Une StatTile a un <a> contenant au minimum deux <div> (valeur et label).
+      return link.querySelectorAll("div").length >= 2;
+    });
+  if (!tileLink) throw new Error(`Tuile « ${label} » introuvable.`);
+  return tileLink;
 }
 
 describe("DashboardView", () => {
@@ -343,7 +352,7 @@ describe("DashboardView", () => {
       "href",
       "/admin/moderation",
     );
-    expect(screen.getByRole("link", { name: "Vendeurs" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Utilisateurs" })).toHaveAttribute(
       "href",
       "/admin/vendeurs",
     );

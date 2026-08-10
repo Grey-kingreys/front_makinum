@@ -26,7 +26,7 @@ import { SearchField } from "./SearchField";
  * VENDEUR : « Mon catalogue » (/vendeur/catalogue, T17a) et « Demandes
  * reçues » (/vendeur/demandes, T17b) — badge = nombre de demandes ENVOYEE
  * en attente de clôture (DemandesRecuesProvider), masqué à 0.
- * ADMIN : « File de modération » (/admin/moderation), « Vendeurs »
+ * ADMIN : « File de modération » (/admin/moderation), « Utilisateurs »
  * (/admin/vendeurs) et « Catégories » (/admin/categories, T31b).
  * La cloche de notifications (NotificationBell, /notifications) est dans la
  * rangée d'en-tête, visible aussi bien repliée (barre mobile) que dépliée
@@ -55,7 +55,7 @@ const VENDEUR_LINKS = [
 
 const ADMIN_LINKS = [
   { href: "/admin/moderation", label: "File de modération" },
-  { href: "/admin/vendeurs", label: "Vendeurs" },
+  { href: "/admin/vendeurs", label: "Utilisateurs" },
   { href: "/admin/categories", label: "Catégories" },
 ] as const;
 

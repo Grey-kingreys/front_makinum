@@ -5,7 +5,7 @@ import { AdminGuard } from "@/components/app/AdminGuard";
 
 import { VendeursView } from "./VendeursView";
 
-export const metadata: Metadata = { title: "Vendeurs" };
+export const metadata: Metadata = { title: "Utilisateurs" };
 
 export default function VendeursPage() {
   return (

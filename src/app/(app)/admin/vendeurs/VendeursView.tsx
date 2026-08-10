@@ -178,7 +178,7 @@ type ConfirmAction =
   | { kind: "validerVendeur"; target: AdminUserView };
 
 /**
- * « Vendeurs » (/admin/vendeurs) — écran isSellers du prototype
+ * « Utilisateurs » (/admin/vendeurs) — écran isSellers du prototype
  * (docs/Design de marketplace locale/Makinum.dc.html), étendu à tous les
  * comptes (pas seulement les vendeurs) : recherche nom/téléphone (déclenchée
  * au submit, pas à chaque frappe), filtres rôle/statut compte/statut
@@ -350,7 +350,7 @@ export function VendeursView() {
     <div className="mx-auto max-w-[1000px] px-6 pb-[60px] pt-[28px] sm:px-8">
       <div className="mb-[22px]">
         <h1 className="mb-1.5 font-display text-[27px] font-bold tracking-tight text-ink sm:text-[33px]">
-          Vendeurs
+          Utilisateurs
         </h1>
         <p className="text-[14.5px] text-brand-subtle">
           Le statut de confiance est attribué manuellement. Aucune progression automatique en V1.
