@@ -8,3 +8,8 @@ export {
   setAccessToken,
 } from "./session";
 export type { LoginResponse, PublicUser, Role, StatutCompte, StatutVendeur } from "./types";
+
+export { devenirVendeur } from "./api";
+
+export { describeDevenirVendeurError, describeDevenirVendeurFormError } from "./errors";
+export type { DevenirVendeurFormError, DevenirVendeurFormField } from "./errors";

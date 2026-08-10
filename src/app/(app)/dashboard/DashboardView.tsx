@@ -33,7 +33,9 @@ import type { ReviewResume } from "@/lib/reviews";
  * déjà utilisé par le formulaire de publication produit). La tuile
  * « Vendeurs à valider » (ADMIN, T30) compte les VENDEUR avec
  * `vendeurValide=false` et renvoie vers /admin/vendeurs pré-filtré sur ce
- * critère (VendeursView lit `?vendeurValide=false` au montage).
+ * critère (VendeursView lit `?vendeurValide=false` au montage). L'action
+ * rapide « Devenir vendeur » (ACHETEUR, T48b) renvoie vers le chemin
+ * libre-service /devenir-vendeur (AcheteurGuard).
  */
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -52,6 +54,9 @@ const BASE_ACTIONS: QuickAction[] = [
   { href: "/produits", label: "Voir les produits" },
   { href: "/demandes", label: "Ma demande" },
 ];
+
+/** T48b : point d'entrée du chemin libre-service ACHETEUR → VENDEUR. */
+const ACHETEUR_ACTIONS: QuickAction[] = [{ href: "/devenir-vendeur", label: "Devenir vendeur" }];
 
 const VENDEUR_ACTIONS: QuickAction[] = [
   { href: "/vendeur/catalogue", label: "Mon catalogue" },
@@ -99,6 +104,7 @@ export function DashboardView() {
   const { demandes, loading: demandesLoading } = useDemandes();
   const { pendingCount, loading: demandesRecuesLoading } = useDemandesRecues();
 
+  const isAcheteur = user?.role === "ACHETEUR";
   const isVendeur = user?.role === "VENDEUR";
   const isAdmin = user?.role === "ADMIN";
   const userId = user?.id;
@@ -262,6 +268,7 @@ export function DashboardView() {
 
   const actions: QuickAction[] = [
     ...BASE_ACTIONS,
+    ...(isAcheteur ? ACHETEUR_ACTIONS : []),
     ...(isVendeur ? VENDEUR_ACTIONS : []),
     ...(isAdmin ? ADMIN_ACTIONS : []),
   ];

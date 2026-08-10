@@ -184,12 +184,16 @@ describe("DashboardView", () => {
     expect(screen.queryByText("Signalements nouveaux")).not.toBeInTheDocument();
     expect(screen.queryByText("Utilisateurs")).not.toBeInTheDocument();
 
-    // Actions rapides : socle commun seulement.
+    // Actions rapides : socle commun + « Devenir vendeur » (T48b, ACHETEUR seulement).
     expect(screen.getByRole("link", { name: "Voir les produits" })).toHaveAttribute(
       "href",
       "/produits",
     );
     expect(screen.getByRole("link", { name: "Ma demande" })).toHaveAttribute("href", "/demandes");
+    expect(screen.getByRole("link", { name: "Devenir vendeur" })).toHaveAttribute(
+      "href",
+      "/devenir-vendeur",
+    );
     expect(screen.queryByRole("link", { name: "Mon catalogue" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Modération" })).not.toBeInTheDocument();
 
@@ -247,6 +251,8 @@ describe("DashboardView", () => {
       "href",
       "/vendeur/demandes",
     );
+    // « Devenir vendeur » (T48b) n'a pas de sens pour un compte déjà VENDEUR.
+    expect(screen.queryByRole("link", { name: "Devenir vendeur" })).not.toBeInTheDocument();
 
     // Pas de tuiles admin, pas d'appel admin pour un VENDEUR.
     expect(screen.queryByText("Signalements nouveaux")).not.toBeInTheDocument();
@@ -356,6 +362,8 @@ describe("DashboardView", () => {
       "href",
       "/admin/vendeurs",
     );
+    // « Devenir vendeur » (T48b) n'a pas de sens pour un ADMIN.
+    expect(screen.queryByRole("link", { name: "Devenir vendeur" })).not.toBeInTheDocument();
 
     expect(screen.queryByText("Produits actifs")).not.toBeInTheDocument();
     expect(getMyProductsMock).not.toHaveBeenCalled();

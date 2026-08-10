@@ -44,6 +44,19 @@ export function listAdminUsers(
 }
 
 export interface UpdateAdminUserInput {
+  /**
+   * Conversion admin ACHETEUR → VENDEUR (T48b). `"VENDEUR"` est la SEULE
+   * valeur acceptée par le backend (400 de validation class-validator sur
+   * toute autre valeur, sans `code` — l'UI n'envoie jamais ADMIN/ACHETEUR
+   * ici) — voir backend/src/reports/dto/update-user.dto.ts.
+   */
+  role?: "VENDEUR";
+  /**
+   * Téléphone de la cible, pris en compte uniquement avec `role: "VENDEUR"` —
+   * requis seulement si la cible n'en a pas déjà un (400 PHONE_REQUIRED
+   * sinon), ignoré si elle en a déjà un.
+   */
+  telephone?: string;
   /** Attribution manuelle du niveau de confiance (LIBRE/VERIFIE/CONFIANCE). */
   statutVendeur?: StatutVendeur;
   /**
@@ -55,15 +68,18 @@ export interface UpdateAdminUserInput {
   /**
    * Validation admin du compte vendeur (T30) : passage à `true` débloque la
    * publication de produits côté vendeur et déclenche une notification
-   * (VENDEUR_VALIDE). Le retour à `false` n'est pas exposé côté écran admin
-   * (pas de cas d'usage V1).
+   * (VENDEUR_VALIDE). Combinable avec `role: "VENDEUR"` dans le même appel
+   * (conversion + validation immédiate, T48b). Le retour à `false` n'est pas
+   * exposé côté écran admin (pas de cas d'usage V1).
    */
   vendeurValide?: boolean;
 }
 
 /**
- * PATCH /admin/utilisateurs/:id — peut échouer avec USER_NOT_FOUND (404) ou
- * CANNOT_SUSPEND_SELF (400) — voir describeAdminUserError.
+ * PATCH /admin/utilisateurs/:id — peut échouer avec USER_NOT_FOUND (404),
+ * CANNOT_SUSPEND_SELF (400), ou — avec `role: "VENDEUR"` — PHONE_REQUIRED
+ * (400), PHONE_ALREADY_USED (409), ALREADY_VENDOR (409), CANNOT_CONVERT_ADMIN
+ * (400) — voir describeAdminUserError / describeConvertVendeurFormError.
  */
 export function updateAdminUser(
   id: string,

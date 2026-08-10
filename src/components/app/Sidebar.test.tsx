@@ -105,7 +105,7 @@ describe("Sidebar", () => {
     expect(within(logoLink).getByText("Makinum")).toBeInTheDocument();
   });
 
-  it("shows the ACHETEUR nav (Produits proches, Vendeurs, Ma demande) for a buyer", async () => {
+  it("shows the ACHETEUR nav (Produits proches, Vendeurs, Ma demande, Devenir vendeur) for a buyer", async () => {
     await renderSidebar(makeUser({ role: "ACHETEUR" }));
 
     expect(screen.getByRole("link", { name: "Produits proches" })).toHaveAttribute(
@@ -114,6 +114,10 @@ describe("Sidebar", () => {
     );
     expect(screen.getByRole("link", { name: "Vendeurs" })).toHaveAttribute("href", "/vendeurs");
     expect(screen.getByRole("link", { name: /Ma demande/ })).toHaveAttribute("href", "/demandes");
+    expect(screen.getByRole("link", { name: "Devenir vendeur" })).toHaveAttribute(
+      "href",
+      "/devenir-vendeur",
+    );
     expect(screen.queryByText("Mon catalogue")).not.toBeInTheDocument();
     expect(screen.queryByText("Demandes reçues")).not.toBeInTheDocument();
   });
@@ -146,6 +150,7 @@ describe("Sidebar", () => {
 
     expect(screen.queryByRole("link", { name: "Produits proches" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Ma demande/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Devenir vendeur" })).not.toBeInTheDocument();
 
     const demandesRecuesLink = screen.getByRole("link", { name: "Demandes reçues" });
     expect(demandesRecuesLink).toHaveAttribute("href", "/vendeur/demandes");
@@ -201,6 +206,7 @@ describe("Sidebar", () => {
     expect(screen.queryByText("Mon catalogue")).not.toBeInTheDocument();
     expect(screen.queryByText("Produits proches")).not.toBeInTheDocument();
     expect(screen.queryByText("Demandes reçues")).not.toBeInTheDocument();
+    expect(screen.queryByText("Devenir vendeur")).not.toBeInTheDocument();
   });
 
   it("shows the EN_COURS draft count as a badge on « Ma demande »", async () => {

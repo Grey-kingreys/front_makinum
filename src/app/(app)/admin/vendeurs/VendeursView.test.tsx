@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AdminUserView } from "@/lib/admin";
+import { ApiError } from "@/lib/api";
 import type { PublicUser } from "@/lib/auth/types";
 
 import { VendeursView } from "./VendeursView";
@@ -325,5 +326,278 @@ describe("VendeursView", () => {
       ),
     );
     expect(await screen.findByLabelText("En attente de validation")).toBeChecked();
+  });
+});
+
+describe("VendeursView — conversion ACHETEUR → VENDEUR (T48b, action admin « Passer vendeur »)", () => {
+  beforeEach(() => {
+    listAdminUsersMock.mockReset();
+    updateAdminUserMock.mockReset();
+    listAdminUsersMock.mockResolvedValue({ items: [makeUser()], total: 1, page: 1, limit: 20 });
+    useAuthMock.mockReset();
+    useAuthMock.mockReturnValue({ user: makeAdmin(), loading: false, login: vi.fn(), logout: vi.fn(), refresh: vi.fn() });
+    useSearchParamsMock.mockReset();
+    useSearchParamsMock.mockReturnValue(new URLSearchParams());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("shows a « Passer vendeur » button only on ACHETEUR rows", async () => {
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ id: "a1", nom: "Amadou Diallo", role: "ACHETEUR" })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    render(<VendeursView />);
+
+    expect(await screen.findByRole("button", { name: "Passer vendeur" })).toBeInTheDocument();
+  });
+
+  it("does not show a « Passer vendeur » button on VENDEUR/ADMIN rows", async () => {
+    render(<VendeursView />);
+    await screen.findByText("Fatoumata Bangoura");
+
+    expect(screen.queryByRole("button", { name: "Passer vendeur" })).not.toBeInTheDocument();
+  });
+
+  it("asks for a phone number only when the ACHETEUR target has none", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ id: "a1", nom: "Amadou Diallo", role: "ACHETEUR", telephone: null })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    render(<VendeursView />);
+    await screen.findByText("Amadou Diallo");
+
+    await user.click(screen.getByRole("button", { name: "Passer vendeur" }));
+    const dialog = await screen.findByRole("dialog");
+
+    expect(within(dialog).getByLabelText("Téléphone")).toBeInTheDocument();
+  });
+
+  it("does not ask for a phone number when the ACHETEUR target already has one", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ id: "a1", nom: "Amadou Diallo", role: "ACHETEUR", telephone: "+224622333333" })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    render(<VendeursView />);
+    await screen.findByText("Amadou Diallo");
+
+    await user.click(screen.getByRole("button", { name: "Passer vendeur" }));
+    const dialog = await screen.findByRole("dialog");
+
+    expect(within(dialog).queryByLabelText("Téléphone")).not.toBeInTheDocument();
+  });
+
+  it("converts to VENDEUR with the entered phone, then refreshes the list", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValueOnce({
+      items: [makeUser({ id: "a1", nom: "Amadou Diallo", role: "ACHETEUR", telephone: null })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    updateAdminUserMock.mockResolvedValueOnce(
+      makeUser({ id: "a1", nom: "Amadou Diallo", role: "VENDEUR", telephone: "+224677000001", vendeurValide: false }),
+    );
+    render(<VendeursView />);
+    await screen.findByText("Amadou Diallo");
+    listAdminUsersMock.mockResolvedValueOnce({
+      items: [
+        makeUser({ id: "a1", nom: "Amadou Diallo", role: "VENDEUR", telephone: "+224677000001", vendeurValide: false }),
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Passer vendeur" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Téléphone"), "+224677000001");
+    await user.click(within(dialog).getByRole("button", { name: "Passer vendeur" }));
+
+    await waitFor(() =>
+      expect(updateAdminUserMock).toHaveBeenCalledWith("a1", {
+        role: "VENDEUR",
+        telephone: "+224677000001",
+      }),
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // Rafraîchit la liste après succès (pas seulement une mise à jour optimiste locale).
+    await waitFor(() => expect(listAdminUsersMock).toHaveBeenCalledTimes(2));
+  });
+
+  it("checking « Valider immédiatement » adds vendeurValide: true to the same PATCH", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [
+        makeUser({ id: "a1", nom: "Amadou Diallo", role: "ACHETEUR", telephone: "+224622333333" }),
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    updateAdminUserMock.mockResolvedValueOnce(
+      makeUser({ id: "a1", nom: "Amadou Diallo", role: "VENDEUR", vendeurValide: true }),
+    );
+    render(<VendeursView />);
+    await screen.findByText("Amadou Diallo");
+
+    await user.click(screen.getByRole("button", { name: "Passer vendeur" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByLabelText("Valider immédiatement"));
+    await user.click(within(dialog).getByRole("button", { name: "Passer vendeur" }));
+
+    await waitFor(() =>
+      expect(updateAdminUserMock).toHaveBeenCalledWith("a1", {
+        role: "VENDEUR",
+        vendeurValide: true,
+      }),
+    );
+  });
+
+  it("does not call the API when the conversion confirmation is cancelled", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ id: "a1", nom: "Amadou Diallo", role: "ACHETEUR" })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    render(<VendeursView />);
+    await screen.findByText("Amadou Diallo");
+
+    await user.click(screen.getByRole("button", { name: "Passer vendeur" }));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: "Annuler" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(updateAdminUserMock).not.toHaveBeenCalled();
+  });
+
+  it("requires a phone number client-side and keeps the dialog open without calling the API", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ id: "a1", nom: "Amadou Diallo", role: "ACHETEUR", telephone: null })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    render(<VendeursView />);
+    await screen.findByText("Amadou Diallo");
+
+    await user.click(screen.getByRole("button", { name: "Passer vendeur" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Passer vendeur" }));
+
+    expect(
+      await within(dialog).findByText("Un numéro de téléphone est requis pour convertir ce compte en vendeur."),
+    ).toBeInTheDocument();
+    expect(updateAdminUserMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("maps PHONE_ALREADY_USED to the phone field and keeps the dialog open", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ id: "a1", nom: "Amadou Diallo", role: "ACHETEUR", telephone: null })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    updateAdminUserMock.mockRejectedValueOnce(
+      new ApiError(409, "Ce numéro de téléphone est déjà utilisé", "PHONE_ALREADY_USED"),
+    );
+    render(<VendeursView />);
+    await screen.findByText("Amadou Diallo");
+
+    await user.click(screen.getByRole("button", { name: "Passer vendeur" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Téléphone"), "+224677000001");
+    await user.click(within(dialog).getByRole("button", { name: "Passer vendeur" }));
+
+    expect(
+      await within(dialog).findByText("Ce numéro de téléphone est déjà utilisé par un autre compte."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("maps PHONE_REQUIRED (server-side) to the phone field and keeps the dialog open", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ id: "a1", nom: "Amadou Diallo", role: "ACHETEUR", telephone: null })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    updateAdminUserMock.mockRejectedValueOnce(
+      new ApiError(400, "Un numéro de téléphone est requis", "PHONE_REQUIRED"),
+    );
+    render(<VendeursView />);
+    await screen.findByText("Amadou Diallo");
+
+    await user.click(screen.getByRole("button", { name: "Passer vendeur" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Téléphone"), "+224677000001");
+    await user.click(within(dialog).getByRole("button", { name: "Passer vendeur" }));
+
+    expect(
+      await within(dialog).findByText("Un numéro de téléphone est requis pour convertir ce compte en vendeur."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("maps ALREADY_VENDOR to a general row error, closing the dialog", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ id: "a1", nom: "Amadou Diallo", role: "ACHETEUR", telephone: "+224622333333" })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    updateAdminUserMock.mockRejectedValueOnce(
+      new ApiError(409, "Ce compte est déjà un compte vendeur", "ALREADY_VENDOR"),
+    );
+    render(<VendeursView />);
+    await screen.findByText("Amadou Diallo");
+
+    await user.click(screen.getByRole("button", { name: "Passer vendeur" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Passer vendeur" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(await screen.findByText("Ce compte est déjà un compte vendeur.")).toBeInTheDocument();
+  });
+
+  it("maps CANNOT_CONVERT_ADMIN to a general row error, closing the dialog", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ id: "a1", nom: "Amadou Diallo", role: "ACHETEUR", telephone: "+224622333333" })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    updateAdminUserMock.mockRejectedValueOnce(
+      new ApiError(400, "Impossible de convertir un compte administrateur en vendeur", "CANNOT_CONVERT_ADMIN"),
+    );
+    render(<VendeursView />);
+    await screen.findByText("Amadou Diallo");
+
+    await user.click(screen.getByRole("button", { name: "Passer vendeur" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Passer vendeur" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      await screen.findByText("Impossible de convertir un compte administrateur en vendeur."),
+    ).toBeInTheDocument();
   });
 });

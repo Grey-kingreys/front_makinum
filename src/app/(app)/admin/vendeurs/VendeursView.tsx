@@ -4,7 +4,13 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { Alert, Badge, Button, ConfirmDialog, Input, type BadgeVariant } from "@/components/ui";
-import { describeAdminUserError, listAdminUsers, updateAdminUser, type AdminUserView } from "@/lib/admin";
+import {
+  describeAdminUserError,
+  describeConvertVendeurFormError,
+  listAdminUsers,
+  updateAdminUser,
+  type AdminUserView,
+} from "@/lib/admin";
 import { useAuth } from "@/lib/auth";
 import type { Role, StatutCompte, StatutVendeur } from "@/lib/auth/types";
 import { initialsFromName } from "@/lib/format";
@@ -61,6 +67,8 @@ interface RowState {
   pendingNiveau: boolean;
   pendingCompte: boolean;
   pendingValidation: boolean;
+  /** T48b : conversion ACHETEUR → VENDEUR (PATCH { role: "VENDEUR" }) en vol. */
+  pendingConvert: boolean;
   error: string | null;
 }
 
@@ -68,6 +76,7 @@ const DEFAULT_ROW_STATE: RowState = {
   pendingNiveau: false,
   pendingCompte: false,
   pendingValidation: false,
+  pendingConvert: false,
   error: null,
 };
 
@@ -78,6 +87,7 @@ function UserRow({
   onSetNiveau,
   onToggleCompte,
   onValider,
+  onConvertToVendeur,
 }: {
   user: AdminUserView;
   currentAdminId: string;
@@ -85,6 +95,7 @@ function UserRow({
   onSetNiveau: (niveau: StatutVendeur) => void;
   onToggleCompte: () => void;
   onValider: () => void;
+  onConvertToVendeur: () => void;
 }) {
   const isSelf = user.id === currentAdminId;
   const suspendu = user.statutCompte === "SUSPENDU";
@@ -153,6 +164,17 @@ function UserRow({
             </Button>
           ) : null}
 
+          {user.role === "ACHETEUR" ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onConvertToVendeur}
+              disabled={rowState.pendingConvert}
+            >
+              {rowState.pendingConvert ? "…" : "Passer vendeur"}
+            </Button>
+          ) : null}
+
           <Button
             size="sm"
             variant="outline"
@@ -175,7 +197,8 @@ function UserRow({
 
 type ConfirmAction =
   | { kind: "toggleCompte"; target: AdminUserView }
-  | { kind: "validerVendeur"; target: AdminUserView };
+  | { kind: "validerVendeur"; target: AdminUserView }
+  | { kind: "convertToVendeur"; target: AdminUserView };
 
 /**
  * « Utilisateurs » (/admin/vendeurs) — écran isSellers du prototype
@@ -187,7 +210,12 @@ type ConfirmAction =
  * attente et suspension/réactivation de compte — la suspension désactive en
  * cascade tout le catalogue du vendeur (voir
  * backend/src/reports/account-moderation.service.ts, `suspendre`) ; la
- * réactivation ne réactive pas les produits.
+ * réactivation ne réactive pas les produits. Sur une ligne ACHETEUR,
+ * « Passer vendeur » (T48b, action admin équivalente au chemin libre-service
+ * /devenir-vendeur) ouvre une modale demandant le téléphone de la cible
+ * seulement si elle n'en a pas déjà un, avec une case « Valider
+ * immédiatement » qui ajoute `vendeurValide: true` au même PATCH
+ * (conversion + validation en un seul appel).
  */
 export function VendeursView() {
   const { user: currentAdmin } = useAuth();
@@ -210,6 +238,11 @@ export function VendeursView() {
   const [error, setError] = useState<string | null>(null);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  // Champs de la modale « Passer vendeur » (T48b) — un seul jeu d'état, pas
+  // par ligne : une seule modale peut être ouverte à la fois.
+  const [convertTelephone, setConvertTelephone] = useState("");
+  const [convertTelephoneError, setConvertTelephoneError] = useState<string | null>(null);
+  const [convertValiderImmediat, setConvertValiderImmediat] = useState(false);
 
   const fetchPage = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -299,6 +332,13 @@ export function VendeursView() {
     setConfirmAction({ kind: "validerVendeur", target });
   }
 
+  function handleConvertToVendeur(target: AdminUserView) {
+    setConvertTelephone("");
+    setConvertTelephoneError(null);
+    setConvertValiderImmediat(false);
+    setConfirmAction({ kind: "convertToVendeur", target });
+  }
+
   async function confirmToggleCompte(target: AdminUserView) {
     const suspendu = target.statutCompte === "SUSPENDU";
 
@@ -333,15 +373,73 @@ export function VendeursView() {
     patchRowState(target.id, { pendingValidation: false });
   }
 
+  /**
+   * PATCH /admin/utilisateurs/:id { role: "VENDEUR", telephone?, vendeurValide? }
+   * (T48b). Renvoie `"retry"` seulement pour une erreur corrigible sur le
+   * téléphone (la modale reste ouverte, l'admin corrige la saisie) ; `"ok"`
+   * pour un succès ou une erreur générale (ALREADY_VENDOR,
+   * CANNOT_CONVERT_ADMIN) — la modale se ferme, l'erreur générale reste
+   * visible sur la ligne (même zone que les autres actions de la ligne).
+   */
+  async function confirmConvertToVendeur(
+    target: AdminUserView,
+    telephone: string | undefined,
+  ): Promise<"ok" | "retry"> {
+    patchRowState(target.id, { pendingConvert: true, error: null });
+    setConvertTelephoneError(null);
+    try {
+      await updateAdminUser(target.id, {
+        role: "VENDEUR",
+        telephone,
+        vendeurValide: convertValiderImmediat ? true : undefined,
+      });
+      await fetchPage(1, false);
+      patchRowState(target.id, { pendingConvert: false });
+      return "ok";
+    } catch (err) {
+      const { field, message } = describeConvertVendeurFormError(
+        err,
+        "Impossible de convertir ce compte en vendeur.",
+      );
+      patchRowState(target.id, { pendingConvert: false, error: field === "telephone" ? null : message });
+      if (field === "telephone") {
+        setConvertTelephoneError(message);
+        return "retry";
+      }
+      return "ok";
+    }
+  }
+
   async function handleConfirm() {
     const action = confirmAction;
     if (!action) return;
-    setConfirmAction(null);
+
     if (action.kind === "toggleCompte") {
+      setConfirmAction(null);
       await confirmToggleCompte(action.target);
-    } else {
-      await confirmValiderVendeur(action.target);
+      return;
     }
+    if (action.kind === "validerVendeur") {
+      setConfirmAction(null);
+      await confirmValiderVendeur(action.target);
+      return;
+    }
+
+    // convertToVendeur : reste ouverte tant qu'une erreur de téléphone
+    // corrigible (client ou serveur) n'est pas résolue.
+    const needsTelephone = !action.target.telephone;
+    if (needsTelephone) {
+      const trimmed = convertTelephone.trim();
+      if (!trimmed) {
+        setConvertTelephoneError("Un numéro de téléphone est requis pour convertir ce compte en vendeur.");
+        return;
+      }
+    }
+    const outcome = await confirmConvertToVendeur(
+      action.target,
+      needsTelephone ? convertTelephone.trim() : undefined,
+    );
+    if (outcome === "ok") setConfirmAction(null);
   }
 
   const hasMore = items.length < total;
@@ -454,6 +552,7 @@ export function VendeursView() {
               onSetNiveau={(niveau) => handleSetNiveau(item, niveau)}
               onToggleCompte={() => handleToggleCompte(item)}
               onValider={() => handleValiderVendeur(item)}
+              onConvertToVendeur={() => handleConvertToVendeur(item)}
             />
           ))}
         </div>
@@ -472,29 +571,69 @@ export function VendeursView() {
         title={
           confirmAction?.kind === "validerVendeur"
             ? "Valider ce vendeur ?"
-            : confirmAction?.target.statutCompte === "SUSPENDU"
-              ? "Réactiver ce compte ?"
-              : "Suspendre ce compte ?"
+            : confirmAction?.kind === "convertToVendeur"
+              ? "Passer ce compte vendeur ?"
+              : confirmAction?.target.statutCompte === "SUSPENDU"
+                ? "Réactiver ce compte ?"
+                : "Suspendre ce compte ?"
         }
         description={
-          confirmAction?.kind === "validerVendeur"
-            ? `Valider le compte de ${confirmAction.target.nom} ? Il pourra publier des produits et sera notifié de la validation.`
-            : confirmAction
-              ? toggleCompteMessage(confirmAction.target)
-              : null
+          confirmAction?.kind === "validerVendeur" ? (
+            `Valider le compte de ${confirmAction.target.nom} ? Il pourra publier des produits et sera notifié de la validation.`
+          ) : confirmAction?.kind === "convertToVendeur" ? (
+            <div className="flex flex-col gap-3">
+              <p>
+                Passer {confirmAction.target.nom} en compte vendeur ? Il pourra publier des produits
+                une fois son compte validé, et sera notifié de la conversion.
+              </p>
+              {!confirmAction.target.telephone ? (
+                <Input
+                  label="Téléphone"
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="+224 622 00 00 00"
+                  value={convertTelephone}
+                  onChange={(event) => {
+                    setConvertTelephone(event.target.value);
+                    setConvertTelephoneError(null);
+                  }}
+                  error={convertTelephoneError ?? undefined}
+                  disabled={rowStateFor(confirmAction.target.id).pendingConvert}
+                  required
+                />
+              ) : null}
+              <label className="flex items-center gap-2 text-[13px] text-brand-muted">
+                <input
+                  type="checkbox"
+                  checked={convertValiderImmediat}
+                  onChange={(event) => setConvertValiderImmediat(event.target.checked)}
+                  className="h-4 w-4 rounded border-border-strong"
+                  disabled={rowStateFor(confirmAction.target.id).pendingConvert}
+                />
+                Valider immédiatement
+              </label>
+            </div>
+          ) : confirmAction ? (
+            toggleCompteMessage(confirmAction.target)
+          ) : null
         }
         confirmLabel={
           confirmAction?.kind === "validerVendeur"
             ? "Valider"
-            : confirmAction?.target.statutCompte === "SUSPENDU"
-              ? "Réactiver"
-              : "Suspendre"
+            : confirmAction?.kind === "convertToVendeur"
+              ? "Passer vendeur"
+              : confirmAction?.target.statutCompte === "SUSPENDU"
+                ? "Réactiver"
+                : "Suspendre"
         }
         variant={
-          confirmAction?.kind === "validerVendeur" || confirmAction?.target.statutCompte === "SUSPENDU"
+          confirmAction?.kind === "validerVendeur" ||
+          confirmAction?.kind === "convertToVendeur" ||
+          confirmAction?.target.statutCompte === "SUSPENDU"
             ? "default"
             : "danger"
         }
+        busy={confirmAction?.kind === "convertToVendeur" && rowStateFor(confirmAction.target.id).pendingConvert}
         onConfirm={handleConfirm}
         onCancel={() => setConfirmAction(null)}
       />
