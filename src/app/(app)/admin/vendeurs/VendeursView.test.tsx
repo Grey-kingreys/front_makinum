@@ -4,24 +4,38 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AdminUserView } from "@/lib/admin";
 import { ApiError } from "@/lib/api";
+import { GeoProvider } from "@/lib/geo";
 import type { PublicUser } from "@/lib/auth/types";
+import type { ProductView } from "@/lib/products/types";
 
 import { VendeursView } from "./VendeursView";
 
-const { listAdminUsersMock, updateAdminUserMock, deleteAdminUserMock, useAuthMock, useSearchParamsMock } =
-  vi.hoisted(() => ({
-    listAdminUsersMock: vi.fn(),
-    updateAdminUserMock: vi.fn(),
-    deleteAdminUserMock: vi.fn(),
-    useAuthMock: vi.fn(),
-    useSearchParamsMock: vi.fn(() => new URLSearchParams()),
-  }));
+const {
+  listAdminUsersMock,
+  updateAdminUserMock,
+  deleteAdminUserMock,
+  createProductForVendorMock,
+  listCategoriesMock,
+  useAuthMock,
+  useSearchParamsMock,
+} = vi.hoisted(() => ({
+  listAdminUsersMock: vi.fn(),
+  updateAdminUserMock: vi.fn(),
+  deleteAdminUserMock: vi.fn(),
+  createProductForVendorMock: vi.fn(),
+  listCategoriesMock: vi.fn(),
+  useAuthMock: vi.fn(),
+  useSearchParamsMock: vi.fn(() => new URLSearchParams()),
+}));
 
 vi.mock("@/lib/admin/api", () => ({
   listAdminUsers: listAdminUsersMock,
   updateAdminUser: updateAdminUserMock,
   deleteAdminUser: deleteAdminUserMock,
+  createProductForVendor: createProductForVendorMock,
 }));
+
+vi.mock("@/lib/categories/api", () => ({ listCategories: listCategoriesMock }));
 
 vi.mock("@/lib/auth", () => ({ useAuth: useAuthMock }));
 
@@ -41,6 +55,7 @@ function makeAdmin(): PublicUser {
     statutVendeur: "LIBRE",
     statutCompte: "ACTIF",
     vendeurValide: true,
+    autoriseAdminPublication: false,
     latitude: null,
     longitude: null,
   };
@@ -60,6 +75,7 @@ function makeUser(overrides: Partial<AdminUserView> = {}): AdminUserView {
     // Vendeur déjà validé par défaut — les tests dédiés à T30 (filtre, bouton
     // « Valider ») surchargent explicitement `vendeurValide: false`.
     vendeurValide: true,
+    autoriseAdminPublication: false,
     latitude: null,
     longitude: null,
     ...overrides,
@@ -760,5 +776,290 @@ describe("VendeursView — suppression de compte (T49b, DELETE /admin/utilisateu
     await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
 
     expect(await screen.findByText("Cet utilisateur est introuvable.")).toBeInTheDocument();
+  });
+});
+
+describe("VendeursView — publication de produit par l'admin (T52b, action « Publier un produit »)", () => {
+  const CATEGORIES = [
+    { id: "c1", nom: "Mode & tissus", slug: "mode-tissus", parentId: null },
+    { id: "c2", nom: "Alimentation", slug: "alimentation", parentId: null },
+  ];
+
+  function makeProduct(overrides: Partial<ProductView> = {}): ProductView {
+    return {
+      id: "p1",
+      titre: "Pagne wax",
+      description: "Tissu wax authentique.",
+      prix: "185000",
+      categorieId: "c1",
+      vendeurId: "v1",
+      latitude: null,
+      longitude: null,
+      actif: true,
+      dateCreation: "2026-08-01T00:00:00.000Z",
+      dateMiseAJour: "2026-08-01T00:00:00.000Z",
+      categorie: { id: "c1", nom: "Mode & tissus", slug: "mode-tissus" },
+      vendeur: { id: "v1", nom: "Fatoumata Bangoura", statutVendeur: "VERIFIE" },
+      photos: [],
+      ...overrides,
+    };
+  }
+
+  function renderView() {
+    return render(
+      <GeoProvider>
+        <VendeursView />
+      </GeoProvider>,
+    );
+  }
+
+  beforeEach(() => {
+    listAdminUsersMock.mockReset();
+    createProductForVendorMock.mockReset();
+    listCategoriesMock.mockReset();
+    listCategoriesMock.mockResolvedValue(CATEGORIES);
+    listAdminUsersMock.mockResolvedValue({ items: [makeUser()], total: 1, page: 1, limit: 20 });
+    useAuthMock.mockReset();
+    useAuthMock.mockReturnValue({ user: makeAdmin(), loading: false, login: vi.fn(), logout: vi.fn(), refresh: vi.fn() });
+    useSearchParamsMock.mockReset();
+    useSearchParamsMock.mockReturnValue(new URLSearchParams());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("does not show the button when the target is not yet validated (vendeurValide: false)", async () => {
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ vendeurValide: false, autoriseAdminPublication: true })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    renderView();
+
+    await screen.findByText("Fatoumata Bangoura");
+    expect(screen.queryByRole("button", { name: "Publier un produit" })).not.toBeInTheDocument();
+  });
+
+  it("does not show the button when the target has not authorized admin publication", async () => {
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ vendeurValide: true, autoriseAdminPublication: false })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    renderView();
+
+    await screen.findByText("Fatoumata Bangoura");
+    expect(screen.queryByRole("button", { name: "Publier un produit" })).not.toBeInTheDocument();
+  });
+
+  it("shows the button only when both conditions are true", async () => {
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ vendeurValide: true, autoriseAdminPublication: true })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    renderView();
+
+    expect(await screen.findByRole("button", { name: "Publier un produit" })).toBeInTheDocument();
+  });
+
+  it("opens a modal naming the target vendor and loads categories", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ vendeurValide: true, autoriseAdminPublication: true })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    renderView();
+    await screen.findByRole("button", { name: "Publier un produit" });
+
+    await user.click(screen.getByRole("button", { name: "Publier un produit" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Fatoumata Bangoura");
+    expect(await within(dialog).findByRole("option", { name: "Mode & tissus" })).toBeInTheDocument();
+  });
+
+  it("submits the product to the right vendeurId, shows success, and refreshes the list", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValueOnce({
+      items: [makeUser({ id: "v1", vendeurValide: true, autoriseAdminPublication: true })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    createProductForVendorMock.mockResolvedValueOnce(makeProduct({ id: "p1", vendeurId: "v1" }));
+    renderView();
+    await screen.findByRole("button", { name: "Publier un produit" });
+    listAdminUsersMock.mockResolvedValueOnce({
+      items: [makeUser({ id: "v1", vendeurValide: true, autoriseAdminPublication: true })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Publier un produit" }));
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByRole("option", { name: "Mode & tissus" });
+
+    await user.type(within(dialog).getByLabelText("Titre du produit"), "Pagne wax");
+    await user.type(within(dialog).getByLabelText("Description"), "Tissu wax authentique.");
+    await user.type(within(dialog).getByLabelText("Prix (GNF)"), "185000");
+    await user.selectOptions(within(dialog).getByLabelText("Catégorie"), "c1");
+    await user.click(within(dialog).getByRole("button", { name: "Publier le produit" }));
+
+    await waitFor(() =>
+      expect(createProductForVendorMock).toHaveBeenCalledWith("v1", {
+        titre: "Pagne wax",
+        description: "Tissu wax authentique.",
+        prix: 185000,
+        categorieId: "c1",
+        latitude: undefined,
+        longitude: undefined,
+      }),
+    );
+    expect(await within(dialog).findByText(/Produit publié/)).toBeInTheDocument();
+    // Rafraîchit la liste après succès, même convention que les autres actions de cet écran.
+    await waitFor(() => expect(listAdminUsersMock).toHaveBeenCalledTimes(2));
+  });
+
+  it("maps USER_NOT_FOUND to a clear message", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ vendeurValide: true, autoriseAdminPublication: true })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    createProductForVendorMock.mockRejectedValueOnce(
+      new ApiError(404, "Utilisateur introuvable", "USER_NOT_FOUND"),
+    );
+    renderView();
+    await screen.findByRole("button", { name: "Publier un produit" });
+
+    await user.click(screen.getByRole("button", { name: "Publier un produit" }));
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByRole("option", { name: "Mode & tissus" });
+    await user.type(within(dialog).getByLabelText("Titre du produit"), "Pagne wax");
+    await user.type(within(dialog).getByLabelText("Description"), "Tissu wax authentique.");
+    await user.type(within(dialog).getByLabelText("Prix (GNF)"), "185000");
+    await user.selectOptions(within(dialog).getByLabelText("Catégorie"), "c1");
+    await user.click(within(dialog).getByRole("button", { name: "Publier le produit" }));
+
+    expect(await within(dialog).findByText("Ce vendeur est introuvable.")).toBeInTheDocument();
+  });
+
+  it("maps VENDOR_NOT_VALIDATED to a clear message", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ vendeurValide: true, autoriseAdminPublication: true })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    createProductForVendorMock.mockRejectedValueOnce(
+      new ApiError(403, "Ce vendeur doit être validé", "VENDOR_NOT_VALIDATED"),
+    );
+    renderView();
+    await screen.findByRole("button", { name: "Publier un produit" });
+
+    await user.click(screen.getByRole("button", { name: "Publier un produit" }));
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByRole("option", { name: "Mode & tissus" });
+    await user.type(within(dialog).getByLabelText("Titre du produit"), "Pagne wax");
+    await user.type(within(dialog).getByLabelText("Description"), "Tissu wax authentique.");
+    await user.type(within(dialog).getByLabelText("Prix (GNF)"), "185000");
+    await user.selectOptions(within(dialog).getByLabelText("Catégorie"), "c1");
+    await user.click(within(dialog).getByRole("button", { name: "Publier le produit" }));
+
+    expect(
+      await within(dialog).findByText(
+        "Ce vendeur doit être validé par un administrateur avant de publier des produits.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("maps ADMIN_PUBLISH_NOT_AUTHORIZED to a message explaining the vendor withdrew consent", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ vendeurValide: true, autoriseAdminPublication: true })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    createProductForVendorMock.mockRejectedValueOnce(
+      new ApiError(403, "Publication non autorisée", "ADMIN_PUBLISH_NOT_AUTHORIZED"),
+    );
+    renderView();
+    await screen.findByRole("button", { name: "Publier un produit" });
+
+    await user.click(screen.getByRole("button", { name: "Publier un produit" }));
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByRole("option", { name: "Mode & tissus" });
+    await user.type(within(dialog).getByLabelText("Titre du produit"), "Pagne wax");
+    await user.type(within(dialog).getByLabelText("Description"), "Tissu wax authentique.");
+    await user.type(within(dialog).getByLabelText("Prix (GNF)"), "185000");
+    await user.selectOptions(within(dialog).getByLabelText("Catégorie"), "c1");
+    await user.click(within(dialog).getByRole("button", { name: "Publier le produit" }));
+
+    expect(
+      await within(dialog).findByText(
+        "Ce vendeur n'a pas autorisé l'équipe Makinum à publier des produits en son nom.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("maps PRODUCT_LIMIT_REACHED to a message explaining the vendor's catalogue is full", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ vendeurValide: true, autoriseAdminPublication: true })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    createProductForVendorMock.mockRejectedValueOnce(
+      new ApiError(409, "Limite atteinte", "PRODUCT_LIMIT_REACHED"),
+    );
+    renderView();
+    await screen.findByRole("button", { name: "Publier un produit" });
+
+    await user.click(screen.getByRole("button", { name: "Publier un produit" }));
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByRole("option", { name: "Mode & tissus" });
+    await user.type(within(dialog).getByLabelText("Titre du produit"), "Pagne wax");
+    await user.type(within(dialog).getByLabelText("Description"), "Tissu wax authentique.");
+    await user.type(within(dialog).getByLabelText("Prix (GNF)"), "185000");
+    await user.selectOptions(within(dialog).getByLabelText("Catégorie"), "c1");
+    await user.click(within(dialog).getByRole("button", { name: "Publier le produit" }));
+
+    expect(
+      await within(dialog).findByText(
+        "Le catalogue de ce vendeur est déjà plein (30 produits actifs) — désactive un produit avant d'en publier un nouveau.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("closes the modal on Escape without submitting", async () => {
+    const user = userEvent.setup();
+    listAdminUsersMock.mockResolvedValue({
+      items: [makeUser({ vendeurValide: true, autoriseAdminPublication: true })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    renderView();
+    await screen.findByRole("button", { name: "Publier un produit" });
+
+    await user.click(screen.getByRole("button", { name: "Publier un produit" }));
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(createProductForVendorMock).not.toHaveBeenCalled();
   });
 });

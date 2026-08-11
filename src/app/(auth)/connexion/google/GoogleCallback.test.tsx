@@ -34,6 +34,7 @@ const DEMO_SESSION = {
     statutVendeur: "LIBRE" as const,
     statutCompte: "ACTIF" as const,
     vendeurValide: false,
+    autoriseAdminPublication: false,
     latitude: null,
     longitude: null,
   },

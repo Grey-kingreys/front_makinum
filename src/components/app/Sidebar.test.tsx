@@ -42,6 +42,7 @@ function makeUser(overrides: Partial<PublicUser> = {}): PublicUser {
     statutVendeur: "LIBRE",
     statutCompte: "ACTIF",
     vendeurValide: true,
+    autoriseAdminPublication: false,
     latitude: null,
     longitude: null,
     ...overrides,
@@ -120,6 +121,7 @@ describe("Sidebar", () => {
     );
     expect(screen.queryByText("Mon catalogue")).not.toBeInTheDocument();
     expect(screen.queryByText("Demandes reçues")).not.toBeInTheDocument();
+    expect(screen.queryByText("Paramètres")).not.toBeInTheDocument();
   });
 
   it("shows « Tableau de bord » first, linking to /dashboard, for every role", async () => {
@@ -155,6 +157,18 @@ describe("Sidebar", () => {
     const demandesRecuesLink = screen.getByRole("link", { name: "Demandes reçues" });
     expect(demandesRecuesLink).toHaveAttribute("href", "/vendeur/demandes");
     expect(screen.queryByText("bientôt")).not.toBeInTheDocument();
+  });
+
+  it("shows « Paramètres » last in the VENDEUR nav (T52b), linking to /vendeur/parametres", async () => {
+    await renderSidebar(makeUser({ role: "VENDEUR" }));
+
+    const nav = screen.getByRole("navigation", { name: "Navigation vendeur" });
+    const navLinks = within(nav).getAllByRole("link");
+    expect(navLinks[navLinks.length - 1]).toHaveAccessibleName("Paramètres");
+    expect(screen.getByRole("link", { name: "Paramètres" })).toHaveAttribute(
+      "href",
+      "/vendeur/parametres",
+    );
   });
 
   it("shows the ENVOYEE pending count as a badge on « Demandes reçues »", async () => {
@@ -207,6 +221,7 @@ describe("Sidebar", () => {
     expect(screen.queryByText("Produits proches")).not.toBeInTheDocument();
     expect(screen.queryByText("Demandes reçues")).not.toBeInTheDocument();
     expect(screen.queryByText("Devenir vendeur")).not.toBeInTheDocument();
+    expect(screen.queryByText("Paramètres")).not.toBeInTheDocument();
   });
 
   it("shows the EN_COURS draft count as a badge on « Ma demande »", async () => {

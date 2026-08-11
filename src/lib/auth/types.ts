@@ -24,6 +24,14 @@ export interface PublicUser {
    * base, jamais exploité en dehors de VENDEUR).
    */
   vendeurValide: boolean;
+  /**
+   * Consentement du vendeur à ce qu'un administrateur publie des produits en
+   * son nom (T52a/T52b, `PATCH /vendeur/parametres`) — réglable librement,
+   * sans garde métier côté backend. Toujours présent (même convention que
+   * `vendeurValide`), sans signification pour les rôles ACHETEUR/ADMIN
+   * (`false` par défaut en base).
+   */
+  autoriseAdminPublication: boolean;
   latitude?: number | null;
   longitude?: number | null;
 }

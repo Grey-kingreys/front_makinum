@@ -25,9 +25,10 @@ import { SearchField } from "./SearchField";
  * « Ma demande » (/demandes, T16) — badge = nombre de brouillons EN_COURS
  * (DemandesProvider), masqué à 0 — et « Devenir vendeur » (/devenir-vendeur,
  * T48b, chemin libre-service).
- * VENDEUR : « Mon catalogue » (/vendeur/catalogue, T17a) et « Demandes
+ * VENDEUR : « Mon catalogue » (/vendeur/catalogue, T17a), « Demandes
  * reçues » (/vendeur/demandes, T17b) — badge = nombre de demandes ENVOYEE
- * en attente de clôture (DemandesRecuesProvider), masqué à 0.
+ * en attente de clôture (DemandesRecuesProvider), masqué à 0 — et
+ * « Paramètres » (/vendeur/parametres, T52b, dernier de la section).
  * ADMIN : « File de modération » (/admin/moderation), « Utilisateurs »
  * (/admin/vendeurs) et « Catégories » (/admin/categories, T31b).
  * La cloche de notifications (NotificationBell, /notifications) est dans la
@@ -68,6 +69,7 @@ const ACHETEUR_LINKS = [
 const VENDEUR_LINKS = [
   { href: "/vendeur/catalogue", label: "Mon catalogue" },
   { href: "/vendeur/demandes", label: "Demandes reçues" },
+  { href: "/vendeur/parametres", label: "Paramètres" },
 ] as const;
 
 const ADMIN_LINKS = [

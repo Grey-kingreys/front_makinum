@@ -81,3 +81,36 @@ export function describeConvertVendeurFormError(
   }
   return { field: null, message: fallback };
 }
+
+/**
+ * Mappe une erreur `POST /admin/utilisateurs/:vendeurId/produits` (T52b,
+ * action admin « Publier un produit ») — même convention que
+ * describeAdminUserError. Codes propres aux 3 gardes de
+ * `AdminUsersService.assertPublicationAutorisee`, dans l'ordre où le backend
+ * les vérifie : cible introuvable ou de rôle ≠ VENDEUR (404
+ * USER_NOT_FOUND, même code que le PATCH/DELETE existants), cible non
+ * validée par un admin (403 VENDOR_NOT_VALIDATED, réutilisé du chemin
+ * vendeur direct), cible n'ayant pas autorisé la publication admin (403
+ * ADMIN_PUBLISH_NOT_AUTHORIZED) — plus la limite de catalogue, commune au
+ * chemin vendeur direct (409 PRODUCT_LIMIT_REACHED).
+ */
+export function describeAdminCreateProductError(
+  error: unknown,
+  fallback = "Impossible de publier ce produit. Réessaie.",
+): string {
+  if (error instanceof ApiError) {
+    switch (error.code) {
+      case "USER_NOT_FOUND":
+        return "Ce vendeur est introuvable.";
+      case "VENDOR_NOT_VALIDATED":
+        return "Ce vendeur doit être validé par un administrateur avant de publier des produits.";
+      case "ADMIN_PUBLISH_NOT_AUTHORIZED":
+        return "Ce vendeur n'a pas autorisé l'équipe Makinum à publier des produits en son nom.";
+      case "PRODUCT_LIMIT_REACHED":
+        return "Le catalogue de ce vendeur est déjà plein (30 produits actifs) — désactive un produit avant d'en publier un nouveau.";
+      default:
+        return error.message || fallback;
+    }
+  }
+  return fallback;
+}

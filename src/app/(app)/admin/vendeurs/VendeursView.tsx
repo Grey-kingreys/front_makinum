@@ -16,6 +16,8 @@ import { useAuth } from "@/lib/auth";
 import type { Role, StatutCompte, StatutVendeur } from "@/lib/auth/types";
 import { initialsFromName } from "@/lib/format";
 
+import { PublierProduitModal } from "./PublierProduitModal";
+
 const PAGE_SIZE = 20;
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -93,6 +95,7 @@ function UserRow({
   onValider,
   onConvertToVendeur,
   onDelete,
+  onPublierProduit,
 }: {
   user: AdminUserView;
   currentAdminId: string;
@@ -102,10 +105,17 @@ function UserRow({
   onValider: () => void;
   onConvertToVendeur: () => void;
   onDelete: () => void;
+  onPublierProduit: () => void;
 }) {
   const isSelf = user.id === currentAdminId;
   const suspendu = user.statutCompte === "SUSPENDU";
   const enAttenteValidation = user.role === "VENDEUR" && !user.vendeurValide;
+  // T52b : n'expose le bouton que si les DEUX conditions sont réunies —
+  // sinon absent (pas désactivé, pour ne pas avoir à expliquer un état
+  // intermédiaire) : cible validée par un admin ET ayant elle-même autorisé
+  // la publication en son nom (`PATCH /vendeur/parametres`).
+  const peutPublierPourCeVendeur =
+    user.role === "VENDEUR" && user.vendeurValide === true && user.autoriseAdminPublication === true;
 
   return (
     <div className="border-b border-beige-soft px-5 py-4 last:border-b-0">
@@ -181,6 +191,12 @@ function UserRow({
             </Button>
           ) : null}
 
+          {peutPublierPourCeVendeur ? (
+            <Button size="sm" variant="outline" onClick={onPublierProduit}>
+              Publier un produit
+            </Button>
+          ) : null}
+
           <Button
             size="sm"
             variant="outline"
@@ -239,7 +255,13 @@ type ConfirmAction =
  * définitive du compte ; le backend la refuse (409 USER_HAS_HISTORY) si le
  * compte a un historique (produits, demandes, avis ou signalements), auquel
  * cas la modale se ferme et une suggestion de suspension s'affiche sur la
- * ligne.
+ * ligne. Sur une ligne VENDEUR validée ET ayant coché
+ * `autoriseAdminPublication` (T52a/T52b, `PATCH /vendeur/parametres`),
+ * « Publier un produit » (voir PublierProduitModal) ouvre une modale
+ * reprenant `ProductForm` (même formulaire que /vendeur/produits/nouveau)
+ * pour publier un produit directement dans le catalogue de ce vendeur
+ * (POST /admin/utilisateurs/:vendeurId/produits) ; le bouton est absent (pas
+ * désactivé) tant que l'une des deux conditions manque.
  */
 export function VendeursView() {
   const { user: currentAdmin } = useAuth();
@@ -262,6 +284,8 @@ export function VendeursView() {
   const [error, setError] = useState<string | null>(null);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  // T52b : cible de la modale « Publier un produit » — `null` = fermée.
+  const [publierProduitTarget, setPublierProduitTarget] = useState<AdminUserView | null>(null);
   // Champs de la modale « Passer vendeur » (T48b) — un seul jeu d'état, pas
   // par ligne : une seule modale peut être ouverte à la fois.
   const [convertTelephone, setConvertTelephone] = useState("");
@@ -365,6 +389,10 @@ export function VendeursView() {
 
   function handleDeleteUser(target: AdminUserView) {
     setConfirmAction({ kind: "deleteUser", target });
+  }
+
+  function handlePublierProduit(target: AdminUserView) {
+    setPublierProduitTarget(target);
   }
 
   async function confirmToggleCompte(target: AdminUserView) {
@@ -609,6 +637,7 @@ export function VendeursView() {
               onValider={() => handleValiderVendeur(item)}
               onConvertToVendeur={() => handleConvertToVendeur(item)}
               onDelete={() => handleDeleteUser(item)}
+              onPublierProduit={() => handlePublierProduit(item)}
             />
           ))}
         </div>
@@ -700,6 +729,14 @@ export function VendeursView() {
         busy={confirmAction?.kind === "convertToVendeur" && rowStateFor(confirmAction.target.id).pendingConvert}
         onConfirm={handleConfirm}
         onCancel={() => setConfirmAction(null)}
+      />
+
+      <PublierProduitModal
+        vendeur={publierProduitTarget}
+        onClose={() => setPublierProduitTarget(null)}
+        onCreated={() => {
+          void fetchPage(1, false);
+        }}
       />
     </div>
   );

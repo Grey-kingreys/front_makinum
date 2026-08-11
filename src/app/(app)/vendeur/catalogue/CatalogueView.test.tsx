@@ -38,6 +38,7 @@ function makeUser(overrides: Partial<PublicUser> = {}): PublicUser {
     statutVendeur: "LIBRE",
     statutCompte: "ACTIF",
     vendeurValide: true,
+    autoriseAdminPublication: false,
     latitude: null,
     longitude: null,
     ...overrides,

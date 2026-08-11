@@ -37,6 +37,7 @@ const DEMO_USER: PublicUser = {
   statutVendeur: "VERIFIE",
   statutCompte: "ACTIF",
   vendeurValide: true,
+  autoriseAdminPublication: false,
   latitude: null,
   longitude: null,
 };

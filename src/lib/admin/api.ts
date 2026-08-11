@@ -1,5 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import type { Role, StatutCompte, StatutVendeur } from "@/lib/auth/types";
+import type { ProductInput } from "@/lib/products/vendor-api";
+import type { ProductView } from "@/lib/products/types";
 
 import type { AdminUserListResult, AdminUserView } from "./types";
 
@@ -105,5 +107,26 @@ export function updateAdminUser(
 export function deleteAdminUser(id: string): Promise<void> {
   return apiFetch<void>(`/admin/utilisateurs/${encodeURIComponent(id)}`, {
     method: "DELETE",
+  });
+}
+
+/**
+ * `POST /admin/utilisateurs/:vendeurId/produits` (T52b) — action admin
+ * « Publier un produit » pour un vendeur qui a autorisé la publication en
+ * son nom (`autoriseAdminPublication`, `PATCH /vendeur/parametres`). Même
+ * DTO que la création côté vendeur (`ProductInput`,
+ * src/lib/products/vendor-api.ts) ; le produit créé appartient à la cible
+ * (`vendeurId` du corps de la réponse), jamais à l'admin appelant. Peut
+ * échouer avec USER_NOT_FOUND (404, cible inconnue ou non-vendeur),
+ * VENDOR_NOT_VALIDATED (403), ADMIN_PUBLISH_NOT_AUTHORIZED (403) ou
+ * PRODUCT_LIMIT_REACHED (409) — voir describeAdminCreateProductError.
+ */
+export function createProductForVendor(
+  vendeurId: string,
+  input: ProductInput,
+): Promise<ProductView> {
+  return apiFetch<ProductView>(`/admin/utilisateurs/${encodeURIComponent(vendeurId)}/produits`, {
+    method: "POST",
+    body: input,
   });
 }
