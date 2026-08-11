@@ -12,7 +12,11 @@ const { useAuthMock, createReportMock } = vi.hoisted(() => ({
   createReportMock: vi.fn(),
 }));
 
-vi.mock("@/lib/auth", () => ({ useAuth: useAuthMock }));
+vi.mock("@/lib/auth", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
+  return { ...actual, useAuth: useAuthMock };
+});
+vi.mock("next/navigation", () => ({ usePathname: () => "/produits/p1" }));
 vi.mock("@/lib/reports/api", () => ({ createReport: createReportMock }));
 
 function makeUser(overrides: Partial<PublicUser> = {}): PublicUser {
@@ -51,6 +55,17 @@ describe("ReportProductAction", () => {
     render(<ReportProductAction vendeurId="v1" produitId="p1" />);
 
     expect(screen.queryByRole("button", { name: "Signaler ce produit" })).not.toBeInTheDocument();
+  });
+
+  it("renders a link to /connexion?returnTo=<chemin courant> instead of the modal when logged out (T51)", () => {
+    useAuthMock.mockReturnValue({ user: null, loading: false, login: vi.fn(), logout: vi.fn(), refresh: vi.fn() });
+    render(<ReportProductAction vendeurId="v1" produitId="p1" />);
+
+    const link = screen.getByRole("link", { name: "Signaler ce produit" });
+    expect(link).toHaveAttribute("href", "/connexion?returnTo=%2Fproduits%2Fp1");
+    expect(screen.queryByRole("button", { name: "Signaler ce produit" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(createReportMock).not.toHaveBeenCalled();
   });
 
   it("opens the modal when the trigger is clicked", async () => {

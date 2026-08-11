@@ -23,15 +23,19 @@ const { getProductMock, notFoundMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/products/api", () => ({ getProduct: getProductMock }));
-vi.mock("next/navigation", () => ({ notFound: notFoundMock }));
+vi.mock("next/navigation", () => ({ notFound: notFoundMock, usePathname: () => "/produits/p1" }));
 
 // ProductDetail (rendu par ProduitPage) appelle useAuth() et useDemandes()
 // (T16, bouton « Ajouter à ma demande ») — hors de portée de ce test (qui ne
 // couvre que le routage 404 de la page), donc mockés en dur plutôt que de
 // monter AuthProvider/DemandesProvider ici.
-vi.mock("@/lib/auth", () => ({
-  useAuth: () => ({ user: null, loading: false, login: vi.fn(), logout: vi.fn(), refresh: vi.fn() }),
-}));
+vi.mock("@/lib/auth", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
+  return {
+    ...actual,
+    useAuth: () => ({ user: null, loading: false, login: vi.fn(), logout: vi.fn(), refresh: vi.fn() }),
+  };
+});
 vi.mock("@/lib/purchase-requests", async () => {
   const actual =
     await vi.importActual<typeof import("@/lib/purchase-requests")>("@/lib/purchase-requests");

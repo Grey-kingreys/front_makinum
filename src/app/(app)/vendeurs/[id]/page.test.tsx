@@ -21,7 +21,7 @@ const { getVendorMock, notFoundMock, listVendeurReviewsMock } = vi.hoisted(() =>
 }));
 
 vi.mock("@/lib/vendors/api", () => ({ getVendor: getVendorMock }));
-vi.mock("next/navigation", () => ({ notFound: notFoundMock }));
+vi.mock("next/navigation", () => ({ notFound: notFoundMock, usePathname: () => "/vendeurs/v1" }));
 // VendeurDetail (rendu par VendeurPage) monte VendorReviewsSection, qui
 // appelle GET /vendeurs/:id/avis — hors de portée de ce test (routage 404).
 vi.mock("@/lib/reviews/api", () => ({ listVendeurReviews: listVendeurReviewsMock }));

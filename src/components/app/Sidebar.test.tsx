@@ -221,3 +221,45 @@ describe("Sidebar", () => {
     expect(link).toHaveTextContent("2");
   });
 });
+
+describe("Sidebar — visiteur (user === null, T51)", () => {
+  beforeEach(() => {
+    usePathnameMock.mockReturnValue("/produits");
+  });
+
+  it("renders only the public catalogue links (Produits proches, Vendeurs) — no dashboard, no role-only links", () => {
+    // Pas de GeoProvider/DemandesProvider/DemandesRecuesProvider/NotificationsProvider :
+    // le rendu visiteur ne doit dépendre d'aucun d'entre eux (AppShell ne les
+    // monte pas en mode visiteur).
+    render(<Sidebar user={null} />);
+
+    const nav = screen.getByRole("navigation", { name: "Navigation visiteur" });
+    const links = within(nav).getAllByRole("link");
+    expect(links.map((link) => link.textContent)).toEqual(["Produits proches", "Vendeurs"]);
+    expect(screen.getByRole("link", { name: "Produits proches" })).toHaveAttribute("href", "/produits");
+    expect(screen.getByRole("link", { name: "Vendeurs" })).toHaveAttribute("href", "/vendeurs");
+
+    expect(screen.queryByRole("link", { name: "Tableau de bord" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Ma demande")).not.toBeInTheDocument();
+    expect(screen.queryByText("Devenir vendeur")).not.toBeInTheDocument();
+  });
+
+  it("shows « Se connecter »/« Créer un compte » CTA (with returnTo) instead of the profile/déconnexion block", () => {
+    usePathnameMock.mockReturnValue("/produits/p1");
+    render(<Sidebar user={null} />);
+
+    const loginCta = screen.getByRole("link", { name: "Se connecter" });
+    expect(loginCta).toHaveAttribute("href", "/connexion?returnTo=%2Fproduits%2Fp1");
+    const signupCta = screen.getByRole("link", { name: "Créer un compte" });
+    expect(signupCta).toHaveAttribute("href", "/inscription?returnTo=%2Fproduits%2Fp1");
+
+    expect(screen.queryByText("Se déconnecter")).not.toBeInTheDocument();
+    expect(screen.queryByText("Fatoumata Bangoura")).not.toBeInTheDocument();
+  });
+
+  it("hides the notification bell", () => {
+    render(<Sidebar user={null} />);
+
+    expect(screen.queryByRole("link", { name: /Notifications/ })).not.toBeInTheDocument();
+  });
+});

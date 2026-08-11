@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { ProductCard } from "@/components/products/ProductCard";
 import { VendeurBadge } from "@/components/products/VendeurBadge";
 import { VendorReviewsSection } from "@/components/reviews/VendorReviewsSection";
 import { ContactButtons } from "@/components/ui";
+import { buildLoginHref } from "@/lib/auth";
 import { initialsFromName } from "@/lib/format";
 import type { VendorDetail as VendorDetailData } from "@/lib/vendors/types";
 
@@ -19,8 +21,11 @@ import type { VendorDetail as VendorDetailData } from "@/lib/vendors/types";
  * appel/WhatsApp si `telephone` est renseigné (requête authentifiée côté
  * backend), sinon invitation à se connecter — jamais de numéro pour un
  * visiteur anonyme (règle de confidentialité du contrat GET /vendeurs/:id).
+ * L'invitation pointe vers /connexion?returnTo=<chemin courant> (T51) : le
+ * visiteur revient sur cette fiche une fois connecté.
  */
 export function VendeurDetail({ vendor }: { vendor: VendorDetailData }) {
+  const pathname = usePathname();
   const telephone = vendor.telephone;
 
   return (
@@ -62,7 +67,7 @@ export function VendeurDetail({ vendor }: { vendor: VendorDetailData }) {
             <ContactButtons telephone={telephone} />
           ) : (
             <div className="rounded-[11px] border border-dashed border-border-strong bg-cream-alt px-4 py-3.5 text-center text-[13px] leading-relaxed text-brand-subtle">
-              <Link href="/connexion" className="font-medium text-brand-vivid underline">
+              <Link href={buildLoginHref(pathname)} className="font-medium text-brand-vivid underline">
                 Connecte-toi
               </Link>{" "}
               pour voir les coordonnées de ce vendeur.

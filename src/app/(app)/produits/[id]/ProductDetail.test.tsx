@@ -26,7 +26,12 @@ const { useAuthMock, createOrCompletePurchaseRequestMock, refreshDemandesMock, l
     listVendeurReviewsMock: vi.fn(),
   }));
 
-vi.mock("@/lib/auth", () => ({ useAuth: useAuthMock }));
+vi.mock("@/lib/auth", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
+  return { ...actual, useAuth: useAuthMock };
+});
+
+vi.mock("next/navigation", () => ({ usePathname: () => "/produits/p1" }));
 
 vi.mock("@/lib/reviews/api", () => ({ listVendeurReviews: listVendeurReviewsMock }));
 
@@ -222,12 +227,12 @@ describe("ProductDetail", () => {
   });
 
   describe("« Ajouter à ma demande »", () => {
-    it("renders a link to /connexion instead of the API call when logged out", () => {
+    it("renders a link to /connexion?returnTo=<chemin courant> instead of the API call when logged out (T51)", () => {
       useAuthMock.mockReturnValue({ user: null, loading: false, login: vi.fn(), logout: vi.fn(), refresh: vi.fn() });
       renderDetail(makeProduct());
 
       const addLink = screen.getByRole("link", { name: "Ajouter à ma demande" });
-      expect(addLink).toHaveAttribute("href", "/connexion");
+      expect(addLink).toHaveAttribute("href", "/connexion?returnTo=%2Fproduits%2Fp1");
       expect(createOrCompletePurchaseRequestMock).not.toHaveBeenCalled();
       // No quantity selector while logged out.
       expect(screen.queryByRole("button", { name: "Augmenter la quantité" })).not.toBeInTheDocument();

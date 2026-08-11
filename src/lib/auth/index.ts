@@ -13,3 +13,11 @@ export { devenirVendeur } from "./api";
 
 export { describeDevenirVendeurError, describeDevenirVendeurFormError } from "./errors";
 export type { DevenirVendeurFormError, DevenirVendeurFormField } from "./errors";
+
+export {
+  RETURN_TO_PARAM,
+  buildInscriptionHref,
+  buildLoginHref,
+  isSafeReturnPath,
+  resolveReturnTo,
+} from "./return-to";

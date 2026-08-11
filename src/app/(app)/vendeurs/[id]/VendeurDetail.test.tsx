@@ -9,6 +9,8 @@ const { listVendeurReviewsMock } = vi.hoisted(() => ({
   listVendeurReviewsMock: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({ usePathname: () => "/vendeurs/v1" }));
+
 vi.mock("@/lib/reviews/api", () => ({ listVendeurReviews: listVendeurReviewsMock }));
 
 function makeVendor(overrides: Partial<VendorDetailData> = {}): VendorDetailData {
@@ -100,14 +102,14 @@ describe("VendeurDetail", () => {
   });
 
   describe("bloc contact", () => {
-    it("hides the contact buttons and shows a login invitation when telephone is null", () => {
+    it("hides the contact buttons and shows a login invitation (with returnTo, T51) when telephone is null", () => {
       render(<VendeurDetail vendor={makeVendor({ telephone: null })} />);
 
       expect(screen.queryByRole("link", { name: "Appeler" })).not.toBeInTheDocument();
       expect(screen.queryByRole("link", { name: "WhatsApp" })).not.toBeInTheDocument();
 
       const loginLink = screen.getByRole("link", { name: "Connecte-toi" });
-      expect(loginLink).toHaveAttribute("href", "/connexion");
+      expect(loginLink).toHaveAttribute("href", "/connexion?returnTo=%2Fvendeurs%2Fv1");
       expect(screen.getByText(/pour voir les coordonnées de ce vendeur/)).toBeInTheDocument();
     });
 

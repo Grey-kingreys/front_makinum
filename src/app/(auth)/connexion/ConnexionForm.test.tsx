@@ -88,6 +88,69 @@ describe("ConnexionForm", () => {
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/dashboard"));
   });
 
+  it("redirects an already-authenticated user to ?returnTo= when it is a safe internal path (T51)", async () => {
+    useSearchParamsMock.mockReturnValue(new URLSearchParams("returnTo=/produits/p1"));
+    refreshSessionMock.mockResolvedValueOnce({ accessToken: "restored-token", user: DEMO_USER });
+
+    renderPage();
+
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/produits/p1"));
+  });
+
+  it.each([
+    ["https://evil.tld"],
+    ["//evil.tld"],
+    ["javascript:alert(1)"],
+    // Un navigateur normalise `\` en `/` dans la partie chemin d'une URL
+    // http/https : ces deux formes se résolvent en https://evil.tld/ malgré
+    // le `/` initial (cf. src/lib/auth/return-to.ts, isSafeReturnPath).
+    ["/\\evil.tld"],
+    ["/\\/evil.tld"],
+  ])(
+    "falls back to /dashboard for an already-authenticated user when returnTo=%s is unsafe (T51)",
+    async (unsafeReturnTo) => {
+      useSearchParamsMock.mockReturnValue(new URLSearchParams({ returnTo: unsafeReturnTo }));
+      refreshSessionMock.mockResolvedValueOnce({ accessToken: "restored-token", user: DEMO_USER });
+
+      renderPage();
+
+      await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/dashboard"));
+    },
+  );
+
+  it("submits identifiant/motDePasse, calls login, and redirects to ?returnTo= on success when it is safe (T51)", async () => {
+    useSearchParamsMock.mockReturnValue(new URLSearchParams("returnTo=/vendeurs/v1"));
+    const user = userEvent.setup();
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ accessToken: "fresh-token", user: DEMO_USER }));
+
+    renderPage();
+
+    await user.type(screen.getByLabelText("Email ou numéro vérifié"), "+224622000000");
+    await user.type(screen.getByLabelText("Mot de passe"), "secret123");
+    await user.click(screen.getByRole("button", { name: "Se connecter" }));
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/vendeurs/v1"));
+  });
+
+  it.each([["//evil.tld"], ["/\\evil.tld"], ["/\\/evil.tld"]])(
+    "submits identifiant/motDePasse, calls login, and falls back to /dashboard when returnTo=%s is unsafe (T51)",
+    async (unsafeReturnTo) => {
+      useSearchParamsMock.mockReturnValue(new URLSearchParams({ returnTo: unsafeReturnTo }));
+      const user = userEvent.setup();
+      const fetchMock = fetch as unknown as FetchMock;
+      fetchMock.mockResolvedValueOnce(jsonResponse({ accessToken: "fresh-token", user: DEMO_USER }));
+
+      renderPage();
+
+      await user.type(screen.getByLabelText("Email ou numéro vérifié"), "+224622000000");
+      await user.type(screen.getByLabelText("Mot de passe"), "secret123");
+      await user.click(screen.getByRole("button", { name: "Se connecter" }));
+
+      await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/dashboard"));
+    },
+  );
+
   it("submits identifiant/motDePasse, calls login, and redirects to /dashboard on success", async () => {
     const user = userEvent.setup();
     const fetchMock = fetch as unknown as FetchMock;

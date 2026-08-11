@@ -80,7 +80,8 @@ describe("AppShell", () => {
     resetSession();
   });
 
-  it("redirects to /connexion when no session is loaded", async () => {
+  it("redirects to /connexion when no session is loaded on a protected route (/dashboard)", async () => {
+    usePathnameMock.mockReturnValue("/dashboard");
     const fetchMock = fetch as unknown as FetchMock;
     // POST /auth/refresh au montage : pas de cookie valide → visiteur anonyme.
     fetchMock.mockResolvedValue(
@@ -94,6 +95,65 @@ describe("AppShell", () => {
 
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/connexion"));
     expect(screen.queryByText("contenu de la page")).not.toBeInTheDocument();
+  });
+
+  it("redirects to /connexion when no session is loaded on /vendeur/catalogue (régression T51)", async () => {
+    usePathnameMock.mockReturnValue("/vendeur/catalogue");
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { code: "INVALID_REFRESH_TOKEN", message: "Session expirée" },
+        { ok: false, status: 401 },
+      ),
+    );
+
+    renderShell();
+
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/connexion"));
+    expect(screen.queryByText("contenu de la page")).not.toBeInTheDocument();
+  });
+
+  it("renders /produits for an anonymous visitor without redirecting, visitor sidebar shown (T51)", async () => {
+    usePathnameMock.mockReturnValue("/produits");
+    const fetchMock = fetch as unknown as FetchMock;
+    // POST /auth/refresh au montage : pas de cookie valide → visiteur anonyme,
+    // /produits est public : pas de redirection, ni de fetch supplémentaire
+    // (DemandesProvider/DemandesRecuesProvider/NotificationsProvider ne sont
+    // pas montés — sinon 401 silencieux à chaque montage).
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { code: "INVALID_REFRESH_TOKEN", message: "Session expirée" },
+        { ok: false, status: 401 },
+      ),
+    );
+
+    renderShell();
+
+    expect(await screen.findByText("contenu de la page")).toBeInTheDocument();
+    expect(replaceMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("link", { name: "Se connecter" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Créer un compte" })).toBeInTheDocument();
+    expect(screen.queryByText("Se déconnecter")).not.toBeInTheDocument();
+    expect(listNotificationsMock).not.toHaveBeenCalled();
+    expect(
+      (fetchMock.mock.calls as [string][]).every(([url]) => !String(url).includes("/demandes")),
+    ).toBe(true);
+  });
+
+  it("renders a nested public path (/produits/p1) for an anonymous visitor without redirecting (T51)", async () => {
+    usePathnameMock.mockReturnValue("/produits/p1");
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { code: "INVALID_REFRESH_TOKEN", message: "Session expirée" },
+        { ok: false, status: 401 },
+      ),
+    );
+
+    renderShell();
+
+    expect(await screen.findByText("contenu de la page")).toBeInTheDocument();
+    expect(replaceMock).not.toHaveBeenCalled();
   });
 
   it("renders the sidebar (active link) and the page content once a session is restored", async () => {

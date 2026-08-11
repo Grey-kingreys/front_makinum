@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { Alert, Button, Input, PasswordInput } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { ApiError, apiFetch } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
+import { resolveReturnTo, useAuth } from "@/lib/auth";
 
 type RolePublic = "ACHETEUR" | "VENDEUR";
 
@@ -43,6 +43,7 @@ const ROLE_OPTIONS: { value: RolePublic; label: string }[] = [
 
 export function InscriptionForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -57,12 +58,16 @@ export function InscriptionForm() {
 
   const telephoneRequired = role === "VENDEUR";
 
-  // Déjà connecté (session restaurée par l'AuthProvider) : direction /dashboard.
+  // Déjà connecté (session restaurée par l'AuthProvider) : direction
+  // ?returnTo= si présent et sûr, sinon /dashboard — même mécanisme que
+  // ConnexionForm (T51, src/lib/auth/return-to.ts). Un visiteur peut arriver
+  // ici via le CTA « Créer un compte » (Sidebar mode visiteur, ou fiche
+  // produit/vendeur) avec une session déjà restaurée entre-temps.
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace("/dashboard");
+      router.replace(resolveReturnTo(searchParams));
     }
-  }, [authLoading, user, router]);
+  }, [authLoading, user, router, searchParams]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -10,14 +10,16 @@ import { InscriptionForm } from "./InscriptionForm";
 
 type FetchMock = ReturnType<typeof vi.fn>;
 
-const { pushMock, replaceMock, refreshSessionMock } = vi.hoisted(() => ({
+const { pushMock, replaceMock, useSearchParamsMock, refreshSessionMock } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   replaceMock: vi.fn(),
+  useSearchParamsMock: vi.fn(() => new URLSearchParams()),
   refreshSessionMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock, replace: replaceMock }),
+  useSearchParams: useSearchParamsMock,
 }));
 
 // T28 : l'AuthProvider restaure la session au montage via POST /auth/refresh.
@@ -73,6 +75,7 @@ describe("InscriptionForm", () => {
     vi.stubGlobal("fetch", vi.fn());
     pushMock.mockClear();
     replaceMock.mockClear();
+    useSearchParamsMock.mockReturnValue(new URLSearchParams());
     refreshSessionMock.mockReset();
     refreshSessionMock.mockRejectedValue(
       new ApiError(401, "Session expirée", "INVALID_REFRESH_TOKEN"),
@@ -91,6 +94,36 @@ describe("InscriptionForm", () => {
 
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/dashboard"));
   });
+
+  it("redirects an already-authenticated user to ?returnTo= when it is a safe internal path (T51)", async () => {
+    useSearchParamsMock.mockReturnValue(new URLSearchParams("returnTo=/produits/p1"));
+    refreshSessionMock.mockResolvedValueOnce({ accessToken: "restored-token", user: DEMO_USER });
+
+    renderForm();
+
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/produits/p1"));
+  });
+
+  it.each([
+    ["https://evil.tld"],
+    ["//evil.tld"],
+    ["javascript:alert(1)"],
+    // Un navigateur normalise `\` en `/` dans la partie chemin d'une URL
+    // http/https : ces deux formes se résolvent en https://evil.tld/ malgré
+    // le `/` initial (cf. src/lib/auth/return-to.ts, isSafeReturnPath).
+    ["/\\evil.tld"],
+    ["/\\/evil.tld"],
+  ])(
+    "falls back to /dashboard for an already-authenticated user when returnTo=%s is unsafe (T51)",
+    async (unsafeReturnTo) => {
+      useSearchParamsMock.mockReturnValue(new URLSearchParams({ returnTo: unsafeReturnTo }));
+      refreshSessionMock.mockResolvedValueOnce({ accessToken: "restored-token", user: DEMO_USER });
+
+      renderForm();
+
+      await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/dashboard"));
+    },
+  );
 
   it("shows a 'Continuer avec Google' link pointing at GET /auth/google", () => {
     renderForm();

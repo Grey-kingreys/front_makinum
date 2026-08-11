@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { Alert } from "@/components/ui";
-import { useAuth } from "@/lib/auth";
+import { buildLoginHref, useAuth } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { createReport, describeReportError, MOTIF_MAX_LENGTH, MOTIF_MIN_LENGTH } from "@/lib/reports";
 
@@ -25,9 +27,17 @@ interface ReportProductActionProps {
  * lui-même le vendeur ciblé (auto-signalement, CANNOT_REPORT_SELF).
  * Composant volontairement autonome (déclenche + modale) pour rester
  * réutilisable partout où un produit est affiché.
+ *
+ * `POST /signalements` exige un JWT (backend, JwtAuthGuard) : un visiteur
+ * anonyme (T51 — fiche produit consultable sans compte) ne doit jamais
+ * atteindre ce point, sous peine de 401 silencieux à l'envoi du formulaire.
+ * Le déclencheur devient alors un lien vers /connexion?returnTo=<chemin
+ * courant> plutôt qu'un bouton ouvrant la modale — même motif que le bouton
+ * « Ajouter à ma demande » (src/app/(app)/produits/[id]/ProductDetail.tsx).
  */
 export function ReportProductAction({ vendeurId, produitId, className }: ReportProductActionProps) {
   const { user } = useAuth();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [motif, setMotif] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -46,6 +56,17 @@ export function ReportProductAction({ vendeurId, produitId, className }: ReportP
   }, [open]);
 
   if (user && user.id === vendeurId) return null;
+
+  if (!user) {
+    return (
+      <Link
+        href={buildLoginHref(pathname)}
+        className={cn("text-[13.5px] text-danger underline transition-opacity hover:opacity-80", className)}
+      >
+        Signaler ce produit
+      </Link>
+    );
+  }
 
   function reset() {
     setMotif("");

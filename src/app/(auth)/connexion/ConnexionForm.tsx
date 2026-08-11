@@ -7,7 +7,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { Alert, Button, Input, PasswordInput } from "@/components/ui";
 import { ApiError } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
+import { resolveReturnTo, useAuth } from "@/lib/auth";
 
 /** Query param déposé par /recuperation à la fin de la réinitialisation. */
 const RECOVERY_SUCCESS_PARAM = "recupere";
@@ -57,12 +57,14 @@ export function ConnexionForm() {
 
   const recoverySuccess = searchParams.get(RECOVERY_SUCCESS_PARAM) === "1";
 
-  // Déjà connecté (session restaurée par l'AuthProvider) : direction /dashboard.
+  // Déjà connecté (session restaurée par l'AuthProvider) : direction
+  // ?returnTo= si présent et sûr (T51 — visiteur renvoyé ici depuis une
+  // action exigeant une session sur une page publique), sinon /dashboard.
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace("/dashboard");
+      router.replace(resolveReturnTo(searchParams));
     }
-  }, [authLoading, user, router]);
+  }, [authLoading, user, router, searchParams]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -73,7 +75,7 @@ export function ConnexionForm() {
     setError(null);
     try {
       await login(cleanIdentifiant, motDePasse);
-      router.push("/dashboard");
+      router.push(resolveReturnTo(searchParams));
     } catch (err) {
       setError(describeLoginError(err));
     } finally {
