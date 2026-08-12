@@ -3,7 +3,8 @@ import { Suspense } from "react";
 
 import { InscriptionForm } from "./InscriptionForm";
 
-export const metadata: Metadata = { title: "Créer un compte" };
+// T53 : ceinture et bretelles avec le Disallow du robots.txt (src/app/robots.ts).
+export const metadata: Metadata = { title: "Créer un compte", robots: { index: false, follow: false } };
 
 export default function InscriptionPage() {
   return (

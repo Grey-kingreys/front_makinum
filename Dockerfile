@@ -51,6 +51,25 @@ RUN test -n "$NEXT_PUBLIC_API_URL" || { \
   echo ""; \
   exit 1; }
 
+# Adresse publique du site — même piège, même variable de build (T53) :
+# canonique, sitemap.xml, robots.txt et balises Open Graph/Twitter (aperçus
+# WhatsApp/Facebook) sont générés à partir de cette valeur au moment du build.
+# Exemple : --build-arg NEXT_PUBLIC_SITE_URL=https://makinum.kingreys.fr
+ARG NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
+
+RUN test -n "$NEXT_PUBLIC_SITE_URL" || { \
+  echo ""; \
+  echo "ERREUR : NEXT_PUBLIC_SITE_URL est vide."; \
+  echo "Cette variable est inlinée dans les bundles au moment du build (URLs"; \
+  echo "canoniques, sitemap.xml, robots.txt, Open Graph) ; une image construite"; \
+  echo "sans elle produirait en silence des canoniques et un sitemap pointant"; \
+  echo "sur http://localhost:3000 pour tous les visiteurs. Dans Dokploy :"; \
+  echo "renseignez-la en BUILD ARG, comme NEXT_PUBLIC_API_URL."; \
+  echo "En local : docker build --build-arg NEXT_PUBLIC_SITE_URL=https://…"; \
+  echo ""; \
+  exit 1; }
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1

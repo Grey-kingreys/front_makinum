@@ -2,8 +2,13 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Instrument_Sans } from "next/font/google";
 
 import { AuthProvider } from "@/lib/auth";
+import { DEFAULT_OG_IMAGE_PATH, DEFAULT_OG_IMAGE_SIZE, getSiteUrl } from "@/lib/seo/config";
 
 import "./globals.css";
+
+const SITE_TITLE = "Makinum — ce qui se vend près de chez toi";
+const SITE_DESCRIPTION =
+  "Makinum met en relation acheteurs et vendeurs de ton quartier à Conakry. Sans intermédiaire, paiement à la livraison.";
 
 const bricolageGrotesque = Bricolage_Grotesque({
   variable: "--font-bricolage",
@@ -18,12 +23,12 @@ const instrumentSans = Instrument_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl()),
   title: {
-    default: "Makinum — ce qui se vend près de chez toi",
+    default: SITE_TITLE,
     template: "%s · Makinum",
   },
-  description:
-    "Makinum met en relation acheteurs et vendeurs de ton quartier à Conakry. Sans intermédiaire, paiement à la livraison.",
+  description: SITE_DESCRIPTION,
   applicationName: "Makinum",
   appleWebApp: {
     capable: true,
@@ -36,6 +41,24 @@ export const metadata: Metadata = {
       { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "fr_GN",
+    siteName: "Makinum",
+    url: "/",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [{ url: DEFAULT_OG_IMAGE_PATH, ...DEFAULT_OG_IMAGE_SIZE, alt: "Makinum" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE_PATH],
   },
 };
 

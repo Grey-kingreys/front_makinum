@@ -3,7 +3,11 @@ import { Suspense } from "react";
 
 import { VerificationForm } from "./VerificationForm";
 
-export const metadata: Metadata = { title: "Vérifier mon email" };
+// T53 : ceinture et bretelles avec le Disallow du robots.txt (src/app/robots.ts).
+export const metadata: Metadata = {
+  title: "Vérifier mon email",
+  robots: { index: false, follow: false },
+};
 
 export default function VerificationPage() {
   return (

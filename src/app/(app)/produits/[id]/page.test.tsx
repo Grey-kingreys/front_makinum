@@ -5,7 +5,7 @@ import { ApiError } from "@/lib/api";
 import { GeoProvider } from "@/lib/geo";
 import type { ProductView } from "@/lib/products/types";
 
-import ProduitPage from "./page";
+import ProduitPage, { generateMetadata } from "./page";
 
 /**
  * `ProduitPage` est un Server Component async : Vitest/RTL ne peut pas le
@@ -62,6 +62,13 @@ const SAMPLE_PRODUCT: ProductView = {
   photos: [],
 };
 
+const SAMPLE_PRODUCT_WITH_PHOTO: ProductView = {
+  ...SAMPLE_PRODUCT,
+  photos: [
+    { id: "ph1", url: "https://api.makinum.example/photos/ph1.jpg", urlMiniature: "https://api.makinum.example/photos/ph1-thumb.jpg", ordre: 0 },
+  ],
+};
+
 describe("ProduitPage", () => {
   beforeEach(() => {
     getProductMock.mockReset();
@@ -94,5 +101,92 @@ describe("ProduitPage", () => {
       "Erreur serveur",
     );
     expect(notFoundMock).not.toHaveBeenCalled();
+  });
+
+  it("renders a JSON-LD Product script alongside the product detail", async () => {
+    getProductMock.mockResolvedValueOnce(SAMPLE_PRODUCT_WITH_PHOTO);
+
+    const ui = await ProduitPage({ params: Promise.resolve({ id: "p1" }) });
+    const { container } = render(<GeoProvider>{ui}</GeoProvider>);
+
+    const script = container.querySelector('script[type="application/ld+json"]');
+    expect(script).not.toBeNull();
+    const data = JSON.parse(script?.textContent ?? "{}");
+
+    expect(data["@type"]).toBe("Product");
+    expect(data.name).toBe("Pagne wax 6 yards");
+    expect(data.image).toEqual(["https://api.makinum.example/photos/ph1.jpg"]);
+    expect(data.offers).toMatchObject({ "@type": "Offer", price: "185000", priceCurrency: "GNF" });
+    expect(data.seller).toMatchObject({ name: "Fatoumata Bangoura" });
+  });
+
+  it("omits the JSON-LD image field when the product has no photo", async () => {
+    getProductMock.mockResolvedValueOnce(SAMPLE_PRODUCT);
+
+    const ui = await ProduitPage({ params: Promise.resolve({ id: "p1" }) });
+    const { container } = render(<GeoProvider>{ui}</GeoProvider>);
+
+    const script = container.querySelector('script[type="application/ld+json"]');
+    const data = JSON.parse(script?.textContent ?? "{}");
+
+    expect(data.image).toBeUndefined();
+  });
+});
+
+describe("generateMetadata (ProduitPage)", () => {
+  beforeEach(() => {
+    getProductMock.mockReset();
+  });
+
+  it("uses the product title, a truncated description, the canonical URL and the OG image", async () => {
+    const longDescription =
+      "Ce pagne wax est importé directement de Hollande, tissé avec des motifs traditionnels " +
+      "guinéens, disponible en plusieurs coloris et livré partout à Conakry sous 48 heures ouvrées.";
+    getProductMock.mockResolvedValueOnce({
+      ...SAMPLE_PRODUCT_WITH_PHOTO,
+      description: longDescription,
+    });
+
+    const metadata = await generateMetadata({ params: Promise.resolve({ id: "p1" }) });
+
+    expect(metadata.title).toBe("Pagne wax 6 yards");
+    expect(typeof metadata.description).toBe("string");
+    expect((metadata.description as string).length).toBeLessThanOrEqual(161);
+    expect(metadata.alternates).toMatchObject({ canonical: "/produits/p1" });
+    expect(metadata.openGraph).toMatchObject({
+      type: "website",
+      title: "Pagne wax 6 yards",
+      url: "/produits/p1",
+    });
+    expect(metadata.openGraph?.images).toEqual([
+      expect.objectContaining({ url: "https://api.makinum.example/photos/ph1.jpg" }),
+    ]);
+  });
+
+  it("falls back to the default site image when the product has no photo", async () => {
+    getProductMock.mockResolvedValueOnce(SAMPLE_PRODUCT);
+
+    const metadata = await generateMetadata({ params: Promise.resolve({ id: "p1" }) });
+
+    expect(metadata.openGraph?.images).toEqual([
+      expect.objectContaining({ url: "/icons/icon-512.png" }),
+    ]);
+  });
+
+  it("returns fallback metadata instead of throwing when the product is a 404", async () => {
+    getProductMock.mockRejectedValueOnce(new ApiError(404, "Produit introuvable", "PRODUCT_NOT_FOUND"));
+
+    const metadata = await generateMetadata({ params: Promise.resolve({ id: "missing" }) });
+
+    expect(metadata.title).toBe("Produit introuvable");
+    expect(metadata.robots).toMatchObject({ index: false, follow: false });
+  });
+
+  it("re-throws non-404 errors", async () => {
+    getProductMock.mockRejectedValueOnce(new ApiError(500, "Erreur serveur"));
+
+    await expect(generateMetadata({ params: Promise.resolve({ id: "p1" }) })).rejects.toThrow(
+      "Erreur serveur",
+    );
   });
 });
