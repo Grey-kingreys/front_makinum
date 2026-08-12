@@ -157,6 +157,36 @@ describe("AppShell", () => {
     expect(replaceMock).not.toHaveBeenCalled();
   });
 
+  it("renders page content synchronously on a public route while the session is still loading (T54 — no empty shell, this is what puts content in the server HTML)", () => {
+    usePathnameMock.mockReturnValue("/produits/p1");
+    const fetchMock = fetch as unknown as FetchMock;
+    // /auth/refresh jamais résolu : simule l'état `loading === true`, le seul
+    // état que le serveur puisse jamais rendre (T28 : la session ne peut être
+    // tranchée que par un appel réseau, impossible côté serveur).
+    fetchMock.mockImplementation(() => new Promise(() => {}));
+
+    renderShell();
+
+    // Assertion synchrone, sans `await` : le contenu doit être présent dès le
+    // premier rendu, pas seulement une fois `loading` retombé à `false`.
+    expect(screen.getByText("contenu de la page")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Se connecter" })).toBeInTheDocument();
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps the empty shell on a protected route while the session is still loading (T54 non-regression — no private-content leak before the redirect fires)", () => {
+    usePathnameMock.mockReturnValue("/dashboard");
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockImplementation(() => new Promise(() => {}));
+
+    renderShell();
+
+    expect(screen.queryByText("contenu de la page")).not.toBeInTheDocument();
+    // Pas encore de redirection : `loading` est toujours vrai, l'effet de
+    // garde n'a pas de verdict à rendre tant que la session n'est pas résolue.
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
   it("renders the sidebar (active link) and the page content once a session is restored", async () => {
     const fetchMock = fetch as unknown as FetchMock;
     fetchMock.mockResolvedValueOnce(
@@ -167,7 +197,16 @@ describe("AppShell", () => {
 
     renderShell();
 
-    expect(await screen.findByText("contenu de la page")).toBeInTheDocument();
+    // /produits est public (T54) : le premier rendu est le mode visiteur
+    // (`loading` encore vrai), puis un second rendu bascule en mode
+    // authentifié une fois la session restaurée — deux commits distincts qui
+    // contiennent chacun « contenu de la page » (nœuds DOM différents,
+    // texte identique). Attendre un marqueur qui n'existe que dans le rendu
+    // authentifié stabilisé avant d'interroger le reste du DOM, pour ne pas
+    // interroger une référence dépendante du premier commit, remplacée entre
+    // temps par le second.
+    await screen.findByText(DEMO_USER.nom);
+    expect(screen.getByText("contenu de la page")).toBeInTheDocument();
     const activeLink = screen.getByRole("link", { name: "Produits proches" });
     expect(activeLink).toHaveAttribute("href", "/produits");
     expect(activeLink).toHaveAttribute("aria-current", "page");
@@ -189,7 +228,10 @@ describe("AppShell", () => {
     const user = userEvent.setup();
     renderShell();
 
-    await screen.findByText("contenu de la page");
+    // Attendre le rendu authentifié stabilisé (même raison que le test
+    // précédent — /produits est public, T54, deux commits successifs) avant
+    // d'interagir avec un élément qui n'existe que dans ce mode.
+    await screen.findByText("Se déconnecter");
     await user.click(screen.getByText("Se déconnecter"));
 
     expect(pushMock).toHaveBeenCalledWith("/");
