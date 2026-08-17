@@ -165,7 +165,7 @@ describe("EditionProduitView", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders existing photos with a counter and lets the vendor delete one", async () => {
+  it("renders existing photos with a counter and lets the vendor delete one after confirmation", async () => {
     const user = userEvent.setup();
     getProductMock.mockResolvedValueOnce(
       makeProduct({ photos: [makePhoto({ id: "ph1", ordre: 1 }), makePhoto({ id: "ph2", ordre: 2 })] }),
@@ -175,10 +175,86 @@ describe("EditionProduitView", () => {
 
     expect(await screen.findByText("2 / 10")).toBeInTheDocument();
 
+    // Click delete to open dialog
     await user.click(screen.getByRole("button", { name: "Supprimer la photo 1" }));
+
+    // Dialog should be open, no API call yet
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(deleteProductPhotoMock).not.toHaveBeenCalled();
+
+    // Confirm deletion
+    await user.click(screen.getByRole("button", { name: "Supprimer" }));
 
     await waitFor(() => expect(deleteProductPhotoMock).toHaveBeenCalledWith("p1", "ph1"));
     expect(await screen.findByText("1 / 10")).toBeInTheDocument();
+  });
+
+  it("opens a confirmation dialog when delete button is clicked and does not emit any API call", async () => {
+    const user = userEvent.setup();
+    getProductMock.mockResolvedValueOnce(
+      makeProduct({ photos: [makePhoto({ id: "ph1", ordre: 1 })] }),
+    );
+    renderView();
+
+    await screen.findByText("1 / 10");
+
+    // Click delete button
+    await user.click(screen.getByRole("button", { name: "Supprimer la photo 1" }));
+
+    // Dialog should be open with correct message
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Supprimer cette photo ?")).toBeInTheDocument();
+    expect(screen.getByText("Cette action est irréversible. Le fichier sera détruit de notre stockage.")).toBeInTheDocument();
+
+    // No API call should have been made
+    expect(deleteProductPhotoMock).not.toHaveBeenCalled();
+  });
+
+  it("closes the dialog and does not delete the photo when cancel is clicked", async () => {
+    const user = userEvent.setup();
+    getProductMock.mockResolvedValueOnce(
+      makeProduct({ photos: [makePhoto({ id: "ph1", ordre: 1 })] }),
+    );
+    renderView();
+
+    await screen.findByText("1 / 10");
+
+    // Click delete button to open dialog
+    await user.click(screen.getByRole("button", { name: "Supprimer la photo 1" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    // Click cancel
+    await user.click(screen.getByRole("button", { name: "Annuler" }));
+
+    // Dialog should be closed
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // No API call should have been made
+    expect(deleteProductPhotoMock).not.toHaveBeenCalled();
+
+    // Photo should still be there
+    expect(screen.getByText("1 / 10")).toBeInTheDocument();
+  });
+
+  it("calls deleteProductPhoto exactly once when confirm is clicked", async () => {
+    const user = userEvent.setup();
+    getProductMock.mockResolvedValueOnce(
+      makeProduct({ photos: [makePhoto({ id: "ph1", ordre: 1 })] }),
+    );
+    deleteProductPhotoMock.mockResolvedValueOnce(undefined);
+    renderView();
+
+    await screen.findByText("1 / 10");
+
+    // Click delete button to open dialog
+    await user.click(screen.getByRole("button", { name: "Supprimer la photo 1" }));
+
+    // Click confirm
+    await user.click(screen.getByRole("button", { name: "Supprimer" }));
+
+    // Should call deleteProductPhoto exactly once
+    await waitFor(() => expect(deleteProductPhotoMock).toHaveBeenCalledTimes(1));
+    expect(deleteProductPhotoMock).toHaveBeenCalledWith("p1", "ph1");
   });
 
   it("reorders photos with the ← → buttons, sending the full reordered id list", async () => {

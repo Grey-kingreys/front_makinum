@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 
-import { Alert } from "@/components/ui";
+import { Alert, ConfirmDialog } from "@/components/ui";
 import { ProductForm, type ProductFormPayload } from "@/components/products/ProductForm";
 import { ApiError } from "@/lib/api";
 import { listCategories } from "@/lib/categories/api";
@@ -92,6 +92,8 @@ export function EditionProduitView({ productId }: EditionProduitViewProps) {
   const [photoActionError, setPhotoActionError] = useState<string | null>(null);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [pendingDeletePhotoId, setPendingDeletePhotoId] = useState<string | null>(null);
 
   const loadProduct = useCallback(async () => {
     setLoading(true);
@@ -194,7 +196,14 @@ export function EditionProduitView({ productId }: EditionProduitViewProps) {
     });
   }
 
-  async function handleDeletePhoto(photoId: string) {
+  function handleDeletePhoto(photoId: string) {
+    setPendingDeletePhotoId(photoId);
+    setDeleteDialogOpen(true);
+  }
+
+  async function confirmDeletePhoto() {
+    if (!pendingDeletePhotoId) return;
+    const photoId = pendingDeletePhotoId;
     setDeletingId(photoId);
     setPhotoActionError(null);
     try {
@@ -206,7 +215,14 @@ export function EditionProduitView({ productId }: EditionProduitViewProps) {
       setPhotoActionError(err instanceof ApiError ? err.message : "Suppression impossible.");
     } finally {
       setDeletingId(null);
+      setDeleteDialogOpen(false);
+      setPendingDeletePhotoId(null);
     }
+  }
+
+  function closeDeleteDialog() {
+    setDeleteDialogOpen(false);
+    setPendingDeletePhotoId(null);
   }
 
   async function handleMovePhoto(photoId: string, direction: -1 | 1) {
@@ -419,6 +435,18 @@ export function EditionProduitView({ productId }: EditionProduitViewProps) {
           </p>
         ) : null}
       </section>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        title="Supprimer cette photo ?"
+        description="Cette action est irréversible. Le fichier sera détruit de notre stockage."
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        variant="danger"
+        busy={deletingId !== null}
+        onConfirm={confirmDeletePhoto}
+        onCancel={closeDeleteDialog}
+      />
     </div>
   );
 }
