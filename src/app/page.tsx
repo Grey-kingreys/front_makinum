@@ -1,16 +1,19 @@
 import Link from "next/link";
 
 import { CategoryGrid } from "@/components/landing/CategoryGrid";
+import { FeaturedProducts } from "@/components/landing/FeaturedProducts";
 import { HeroVisual } from "@/components/landing/HeroVisual";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 
 /**
  * Landing publique de Makinum — reproduit l'écran « isLanding » du
  * prototype de référence (docs/Design de marketplace locale/Makinum.dc.html) :
- * header, héros, « Comment ça marche », « La confiance ne se promet pas »,
- * puis une section catégories (« Ce qui se vend ») et le footer. Server
- * Component statique : aucun fetch, contenu figé (le listing dynamique de
- * produits/catégories arrive en T15).
+ * header, héros, une section produits (FeaturedProducts, T58), « Comment ça
+ * marche », « La confiance ne se promet pas », puis une section catégories
+ * (« Ce qui se vend ») et le footer. Server Component en ISR (revalidate
+ * 5 min) : le contenu statique du prototype est figé, mais FeaturedProducts
+ * et CategoryGrid font chacun leur propre fetch server-side vers l'API
+ * publique.
  */
 
 const ACCENT_BUTTON =
@@ -88,6 +91,8 @@ export default function Home() {
             <HeroVisual />
           </div>
         </section>
+
+        <FeaturedProducts />
 
         <section
           id="comment-ca-marche"
@@ -183,8 +188,8 @@ export default function Home() {
               Ce qui se vend
             </h2>
             <p className="mb-8 max-w-[560px] text-[15px] leading-[1.6] text-brand-subtle">
-              Un aperçu des catégories disponibles sur Makinum. Le catalogue complet, trié par distance,
-              arrive avec la recherche en ligne.
+              Un aperçu des catégories disponibles sur Makinum. Retrouve le catalogue complet, trié par
+              distance, sur la page produits.
             </p>
 
             <CategoryGrid />

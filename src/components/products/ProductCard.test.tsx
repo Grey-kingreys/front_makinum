@@ -114,4 +114,35 @@ describe("ProductCard", () => {
 
     expect(screen.queryByText(/★/)).not.toBeInTheDocument();
   });
+
+  // T58 — défaut de showDistance inchangé : /produits et la fiche vendeur
+  // n'appellent pas la prop, la zone distance/repli doit continuer de
+  // s'afficher exactement comme avant l'introduction de la prop.
+  it("affiche toujours la zone distance par défaut (showDistance omis) quand distanceKm est connu", () => {
+    render(<ProductCard item={BASE_ITEM} />);
+
+    expect(screen.getByText("2.4 km")).toBeInTheDocument();
+  });
+
+  it("affiche toujours « Localisation non précisée » par défaut (showDistance omis) quand distanceKm est null", () => {
+    const item: ProductSearchItem = { ...BASE_ITEM, distanceKm: null };
+    render(<ProductCard item={item} />);
+
+    expect(screen.getByText("Localisation non précisée")).toBeInTheDocument();
+  });
+
+  it("masque entièrement la zone distance quand showDistance vaut false, même si distanceKm est connu", () => {
+    render(<ProductCard item={BASE_ITEM} showDistance={false} />);
+
+    expect(screen.queryByText("2.4 km")).not.toBeInTheDocument();
+    expect(screen.queryByText("Localisation non précisée")).not.toBeInTheDocument();
+  });
+
+  it("masque entièrement la zone distance quand showDistance vaut false et distanceKm est null", () => {
+    const item: ProductSearchItem = { ...BASE_ITEM, distanceKm: null };
+    render(<ProductCard item={item} showDistance={false} />);
+
+    expect(screen.queryByText(/km/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Localisation non précisée")).not.toBeInTheDocument();
+  });
 });

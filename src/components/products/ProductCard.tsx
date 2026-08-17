@@ -24,8 +24,21 @@ import { VendeurBadge } from "./VendeurBadge";
  * testés avec `== null` / `!= null` (comparaison lâche, volontaire) pour
  * couvrir les deux cas et toujours retomber sur l'état de repli plutôt que
  * d'afficher un libellé orphelin (« km » sans nombre, « ★ () » vide…).
+ *
+ * `showDistance` (T58, défaut `true` = comportement historique) masque toute
+ * la zone distance quand `false`. Sur une page rendue côté serveur (landing),
+ * la position du visiteur est toujours inconnue : afficher « Localisation
+ * non précisée » sur 100 % des cartes serait trompeur, donc la landing passe
+ * `showDistance={false}` plutôt que de laisser le repli `distanceKm == null`
+ * s'afficher. `/produits` et la fiche vendeur gardent le défaut inchangé.
  */
-export function ProductCard({ item }: { item: ProductSearchItem }) {
+export function ProductCard({
+  item,
+  showDistance = true,
+}: {
+  item: ProductSearchItem;
+  showDistance?: boolean;
+}) {
   const hasNote = item.vendeur.noteMoyenne != null && item.vendeur.nbAvis != null;
   return (
     <Link
@@ -39,15 +52,17 @@ export function ProductCard({ item }: { item: ProductSearchItem }) {
         ) : (
           <PhotoPlaceholder />
         )}
-        {item.distanceKm != null ? (
-          <span className="absolute right-[11px] top-[11px] rounded-full bg-ink/80 px-[10px] py-[5px] text-[12px] text-cream">
-            {item.distanceKm} km
-          </span>
-        ) : (
-          <span className="absolute right-[11px] top-[11px] max-w-[calc(100%-22px)] rounded-md bg-ink/60 px-[9px] py-[4px] text-right text-[11px] leading-snug text-cream/90">
-            Localisation non précisée
-          </span>
-        )}
+        {showDistance ? (
+          item.distanceKm != null ? (
+            <span className="absolute right-[11px] top-[11px] rounded-full bg-ink/80 px-[10px] py-[5px] text-[12px] text-cream">
+              {item.distanceKm} km
+            </span>
+          ) : (
+            <span className="absolute right-[11px] top-[11px] max-w-[calc(100%-22px)] rounded-md bg-ink/60 px-[9px] py-[4px] text-right text-[11px] leading-snug text-cream/90">
+              Localisation non précisée
+            </span>
+          )
+        ) : null}
       </div>
       <div className="flex flex-1 flex-col gap-2 px-[15px] pb-4 pt-[14px]">
         <div className="text-[15px] font-medium leading-snug text-ink">{item.titre}</div>

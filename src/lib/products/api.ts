@@ -32,6 +32,23 @@ export function searchProducts(params: SearchProductsParams = {}): Promise<Produ
   return apiFetch<ProductSearchResult>(`/products${buildSearchQuery(params)}`, { method: "GET" });
 }
 
+/**
+ * GET /products — même endpoint que `searchProducts`, utilisé côté serveur
+ * par la landing (FeaturedProducts, T58) avec le cache Next.js configuré :
+ * `next: { revalidate: 300 }` (5 min), plutôt qu'un fetch à chaque requête.
+ * Sans `lat`/`lng`, l'API retombe automatiquement sur le tri RECENT (voir
+ * backend/src/products/search-params.util.ts) — pas d'erreur, pas de
+ * géolocalisation nécessaire côté landing.
+ */
+export function searchProductsCached(
+  params: SearchProductsParams = {},
+): Promise<ProductSearchResult> {
+  return apiFetch<ProductSearchResult>(`/products${buildSearchQuery(params)}`, {
+    method: "GET",
+    next: { revalidate: 300 },
+  });
+}
+
 /** GET /products/:id — fiche produit publique. */
 export function getProduct(id: string): Promise<ProductView> {
   return apiFetch<ProductView>(`/products/${encodeURIComponent(id)}`, { method: "GET" });

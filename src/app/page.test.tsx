@@ -25,6 +25,14 @@ vi.mock("@/components/landing/CategoryGrid", () => ({
   CategoryGrid: () => null,
 }));
 
+// FeaturedProducts (rendu par Page, T58) est lui aussi un composant serveur
+// async (fetch GET /products?limit=8) — même raison, même traitement : stub
+// synchrone ici, comportement (données, masquage) couvert par
+// FeaturedProducts.test.tsx.
+vi.mock("@/components/landing/FeaturedProducts", () => ({
+  FeaturedProducts: () => null,
+}));
+
 // LandingHeader (rendu par Page) est auth-aware (useAuth()) : comme dans la
 // vraie app (AuthProvider monté au root layout, src/app/layout.tsx), il faut
 // un AuthProvider dans l'arbre. Le rafraîchissement de session étant neutralisé
