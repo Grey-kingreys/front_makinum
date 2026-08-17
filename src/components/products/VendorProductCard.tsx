@@ -18,6 +18,9 @@ interface VendorProductCardProps {
   toggling: boolean;
   toggleError?: string;
   onToggle: () => void;
+  deleting: boolean;
+  deleteError?: string;
+  onDelete: () => void;
 }
 
 export function VendorProductCard({
@@ -25,6 +28,9 @@ export function VendorProductCard({
   toggling,
   toggleError,
   onToggle,
+  deleting,
+  deleteError,
+  onDelete,
 }: VendorProductCardProps) {
   const cover = [...product.photos].sort((a, b) => a.ordre - b.ordre)[0] ?? null;
 
@@ -57,21 +63,33 @@ export function VendorProductCard({
           {product.categorie.nom} · {product.photos.length}/{MAX_PHOTOS_PAR_PRODUIT} photos
         </div>
         {toggleError ? <p className="text-[12.5px] text-danger">{toggleError}</p> : null}
-        <div className="mt-auto flex gap-2 pt-2">
-          <Link
-            href={`/vendeur/produits/${product.id}`}
-            className="flex-1 rounded-md border border-border-strong bg-white px-3 py-2 text-center text-[13.5px] text-ink transition-colors hover:border-brand"
-          >
-            Modifier
-          </Link>
+        {deleteError ? <p className="text-[12.5px] text-danger">{deleteError}</p> : null}
+        <div className="mt-auto flex flex-col gap-2 pt-2">
+          <div className="flex gap-2">
+            <Link
+              href={`/vendeur/produits/${product.id}`}
+              className="flex-1 rounded-md border border-border-strong bg-white px-3 py-2 text-center text-[13.5px] text-ink transition-colors hover:border-brand"
+            >
+              Modifier
+            </Link>
+            <button
+              type="button"
+              onClick={onToggle}
+              disabled={toggling}
+              aria-busy={toggling}
+              className="flex-1 cursor-pointer rounded-md border border-border-strong bg-white px-3 py-2 text-center text-[13.5px] text-ink transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {toggling ? "…" : product.actif ? "Désactiver" : "Réactiver"}
+            </button>
+          </div>
           <button
             type="button"
-            onClick={onToggle}
-            disabled={toggling}
-            aria-busy={toggling}
-            className="flex-1 cursor-pointer rounded-md border border-border-strong bg-white px-3 py-2 text-center text-[13.5px] text-ink transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={onDelete}
+            disabled={deleting}
+            aria-busy={deleting}
+            className="w-full cursor-pointer rounded-md border border-tint-danger-border bg-white px-3 py-2 text-center text-[13.5px] text-danger transition-colors hover:border-danger disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {toggling ? "…" : product.actif ? "Désactiver" : "Réactiver"}
+            {deleting ? "…" : "Supprimer"}
           </button>
         </div>
       </div>

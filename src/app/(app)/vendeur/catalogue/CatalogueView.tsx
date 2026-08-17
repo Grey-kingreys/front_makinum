@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { Alert, Button } from "@/components/ui";
+import { Alert, Button, ConfirmDialog } from "@/components/ui";
 import { VendorProductCard } from "@/components/products/VendorProductCard";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import {
+  deleteProduct,
   getMyProducts,
   MAX_PRODUITS_ACTIFS,
   updateProduct,
@@ -23,6 +24,9 @@ const PRIMARY_LINK_CLASSES =
 
 const VALIDATION_PENDING_MESSAGE =
   "Ton compte vendeur doit être validé par un administrateur avant de publier un produit.";
+
+const PRODUCT_HAS_HISTORY_MESSAGE =
+  "Ce produit a un historique (demandes, avis ou signalements) : désactive-le plutôt que de le supprimer.";
 
 /**
  * « Publier un produit » — lien actif une fois le compte validé, sinon
@@ -83,6 +87,11 @@ export function CatalogueView() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [toggleErrors, setToggleErrors] = useState<Record<string, string>>({});
 
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [pendingDeleteProduct, setPendingDeleteProduct] = useState<ProductView | null>(null);
+
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -119,6 +128,40 @@ export function CatalogueView() {
       setToggleErrors((prev) => ({ ...prev, [product.id]: message }));
     } finally {
       setTogglingId(null);
+    }
+  }
+
+  /** Ouvre la confirmation — aucun appel API tant que le vendeur n'a pas confirmé. */
+  function handleDeleteClick(product: ProductView) {
+    setDeleteErrors((prev) => ({ ...prev, [product.id]: "" }));
+    setPendingDeleteProduct(product);
+    setDeleteDialogOpen(true);
+  }
+
+  function closeDeleteDialog() {
+    setDeleteDialogOpen(false);
+    setPendingDeleteProduct(null);
+  }
+
+  async function confirmDeleteProduct() {
+    if (!pendingDeleteProduct) return;
+    const product = pendingDeleteProduct;
+    setDeletingId(product.id);
+    try {
+      await deleteProduct(product.id);
+      setProducts((prev) => prev?.filter((item) => item.id !== product.id) ?? prev);
+      closeDeleteDialog();
+    } catch (err) {
+      const message =
+        err instanceof ApiError && err.code === "PRODUCT_HAS_HISTORY"
+          ? PRODUCT_HAS_HISTORY_MESSAGE
+          : err instanceof ApiError
+            ? err.message
+            : "Impossible de supprimer ce produit. Réessaie.";
+      setDeleteErrors((prev) => ({ ...prev, [product.id]: message }));
+      closeDeleteDialog();
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -207,10 +250,27 @@ export function CatalogueView() {
               toggling={togglingId === product.id}
               toggleError={toggleErrors[product.id] || undefined}
               onToggle={() => handleToggle(product)}
+              deleting={deletingId === product.id}
+              deleteError={deleteErrors[product.id] || undefined}
+              onDelete={() => handleDeleteClick(product)}
             />
           ))}
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        title={
+          pendingDeleteProduct ? `Supprimer « ${pendingDeleteProduct.titre} » ?` : "Supprimer ce produit ?"
+        }
+        description="Cette action est irréversible : le produit et toutes ses photos seront définitivement supprimés de notre stockage."
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        variant="danger"
+        busy={deletingId !== null}
+        onConfirm={confirmDeleteProduct}
+        onCancel={closeDeleteDialog}
+      />
     </div>
   );
 }

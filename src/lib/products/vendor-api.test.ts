@@ -6,6 +6,7 @@ import { resetSession } from "@/lib/auth/session";
 import {
   addProductPhoto,
   createProduct,
+  deleteProduct,
   deleteProductPhoto,
   getMyProducts,
   reorderProductPhotos,
@@ -106,6 +107,17 @@ describe("vendor-api", () => {
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(`${getApiBaseUrl()}/products/p1/photos/ph1`);
+    expect(init.method).toBe("DELETE");
+  });
+
+  it("deleteProduct() calls DELETE /products/:id", async () => {
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockResolvedValueOnce(jsonResponse(null));
+
+    await deleteProduct("p1");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${getApiBaseUrl()}/products/p1`);
     expect(init.method).toBe("DELETE");
   });
 

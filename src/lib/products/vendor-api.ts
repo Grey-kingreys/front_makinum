@@ -75,3 +75,13 @@ export function reorderProductPhotos(id: string, photoIds: string[]): Promise<Pr
     body: { photoIds },
   });
 }
+
+/**
+ * DELETE /products/:id — 204 No Content. Suppression réelle et irréversible
+ * (produit + photos + fichiers de stockage). Refusée (409 PRODUCT_HAS_HISTORY)
+ * si le produit a un historique (demandes, avis ou signalements) : désactiver
+ * plutôt via `updateProduct(id, { actif: false })`.
+ */
+export function deleteProduct(id: string): Promise<void> {
+  return apiFetch<void>(`/products/${encodeURIComponent(id)}`, { method: "DELETE" });
+}

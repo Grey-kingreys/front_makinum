@@ -8,9 +8,10 @@ import type { ProductView } from "@/lib/products/types";
 
 import { CatalogueView } from "./CatalogueView";
 
-const { getMyProductsMock, updateProductMock, useAuthMock } = vi.hoisted(() => ({
+const { getMyProductsMock, updateProductMock, deleteProductMock, useAuthMock } = vi.hoisted(() => ({
   getMyProductsMock: vi.fn(),
   updateProductMock: vi.fn(),
+  deleteProductMock: vi.fn(),
   useAuthMock: vi.fn(),
 }));
 
@@ -21,6 +22,7 @@ vi.mock("@/lib/products/vendor-api", async () => {
     ...actual,
     getMyProducts: getMyProductsMock,
     updateProduct: updateProductMock,
+    deleteProduct: deleteProductMock,
   };
 });
 
@@ -69,6 +71,7 @@ describe("CatalogueView", () => {
   beforeEach(() => {
     getMyProductsMock.mockReset();
     updateProductMock.mockReset();
+    deleteProductMock.mockReset();
     useAuthMock.mockReset();
     useAuthMock.mockReturnValue({
       user: makeUser(),
@@ -208,5 +211,100 @@ describe("CatalogueView", () => {
       screen.queryByRole("link", { name: "Publier mon premier produit" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Publier mon premier produit")).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("clicking « Supprimer » opens the confirm dialog without calling the API", async () => {
+    const user = userEvent.setup();
+    getMyProductsMock.mockResolvedValueOnce([makeProduct({ id: "p1" })]);
+    render(<CatalogueView />);
+
+    await screen.findByText("Pagne wax 6 yards");
+    await user.click(screen.getByRole("button", { name: "Supprimer" }));
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText(/irréversible/)).toBeInTheDocument();
+    expect(deleteProductMock).not.toHaveBeenCalled();
+  });
+
+  it("cancelling the confirm dialog makes no API call", async () => {
+    const user = userEvent.setup();
+    getMyProductsMock.mockResolvedValueOnce([makeProduct({ id: "p1" })]);
+    render(<CatalogueView />);
+
+    await screen.findByText("Pagne wax 6 yards");
+    await user.click(screen.getByRole("button", { name: "Supprimer" }));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: "Annuler" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(deleteProductMock).not.toHaveBeenCalled();
+    expect(screen.getByText("Pagne wax 6 yards")).toBeInTheDocument();
+  });
+
+  it("confirming calls deleteProduct once and refreshes the list", async () => {
+    const user = userEvent.setup();
+    getMyProductsMock.mockResolvedValueOnce([makeProduct({ id: "p1" })]);
+    deleteProductMock.mockResolvedValueOnce(undefined);
+    render(<CatalogueView />);
+
+    await screen.findByText("Pagne wax 6 yards");
+    await user.click(screen.getByRole("button", { name: "Supprimer" }));
+    await screen.findByRole("dialog");
+    // Deux boutons « Supprimer » à ce stade (carte + dialogue) : celui du
+    // dialogue est le dernier rendu.
+    const confirmButtons = screen.getAllByRole("button", { name: "Supprimer" });
+    await user.click(confirmButtons[confirmButtons.length - 1]);
+
+    await waitFor(() => expect(deleteProductMock).toHaveBeenCalledTimes(1));
+    expect(deleteProductMock).toHaveBeenCalledWith("p1");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.queryByText("Pagne wax 6 yards")).not.toBeInTheDocument();
+  });
+
+  it("shows a message pointing to deactivation on PRODUCT_HAS_HISTORY, keeps the product listed", async () => {
+    const user = userEvent.setup();
+    getMyProductsMock.mockResolvedValueOnce([makeProduct({ id: "p1" })]);
+    deleteProductMock.mockRejectedValueOnce(
+      new ApiError(
+        409,
+        "Ce produit a un historique (demandes, avis ou signalements) : désactivez-le plutôt que de le supprimer",
+        "PRODUCT_HAS_HISTORY",
+      ),
+    );
+    render(<CatalogueView />);
+
+    await screen.findByText("Pagne wax 6 yards");
+    await user.click(screen.getByRole("button", { name: "Supprimer" }));
+    await screen.findByRole("dialog");
+    const confirmButtons = screen.getAllByRole("button", { name: "Supprimer" });
+    await user.click(confirmButtons[confirmButtons.length - 1]);
+
+    expect(
+      await screen.findByText(/désactive-le plutôt que de le supprimer/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Pagne wax 6 yards")).toBeInTheDocument();
+  });
+
+  it("recalculates the active-products gauge after deleting an active product", async () => {
+    const user = userEvent.setup();
+    getMyProductsMock.mockResolvedValueOnce([
+      makeProduct({ id: "p1", titre: "Produit un", actif: true }),
+      makeProduct({ id: "p2", titre: "Produit deux", actif: true }),
+    ]);
+    deleteProductMock.mockResolvedValueOnce(undefined);
+    render(<CatalogueView />);
+
+    await screen.findByText("Produit un");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "2");
+
+    const [deleteButtonProduitUn] = screen.getAllByRole("button", { name: "Supprimer" });
+    await user.click(deleteButtonProduitUn);
+    await screen.findByRole("dialog");
+    const confirmButtons = screen.getAllByRole("button", { name: "Supprimer" });
+    await user.click(confirmButtons[confirmButtons.length - 1]);
+
+    await waitFor(() => expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1"));
+    expect(screen.queryByText("Produit un")).not.toBeInTheDocument();
+    expect(screen.getByText("Produit deux")).toBeInTheDocument();
   });
 });
