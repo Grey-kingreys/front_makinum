@@ -173,7 +173,7 @@ function UserRow({
           <span />
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {enAttenteValidation ? (
             <Button size="sm" variant="primary" onClick={onValider} disabled={rowState.pendingValidation}>
               {rowState.pendingValidation ? "…" : "Valider"}

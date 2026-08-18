@@ -150,7 +150,7 @@ export function ProductDetail({ product }: { product: ProductView }) {
       </Link>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.15fr_0.85fr]">
-        <div>
+        <div className="order-2 lg:order-1">
           <div className="mb-3 h-[420px] overflow-hidden rounded-[18px]">
             {selectedPhoto ? (
               // eslint-disable-next-line @next/next/no-img-element -- photos backend, pas de config next/image en V1.
@@ -195,7 +195,7 @@ export function ProductDetail({ product }: { product: ProductView }) {
           <VendorReviewsSection vendeurId={product.vendeurId} />
         </div>
 
-        <div>
+        <div className="order-1 lg:order-2">
           <div className="lg:sticky lg:top-[24px]">
             <div className="rounded-[18px] border border-border bg-white p-[26px]">
               <span className="mb-3.5 inline-block rounded-full bg-beige-soft px-[11px] py-[5px] text-[12.5px] text-brand-subtle">

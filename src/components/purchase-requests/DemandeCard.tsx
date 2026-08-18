@@ -244,31 +244,39 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
         {demande.items.map((item) => (
           <div
             key={item.id}
-            className="flex items-center gap-4 border-b border-beige-soft px-5 py-4 last:border-b-0"
+            className="flex flex-col gap-3 border-b border-beige-soft px-5 py-4 last:border-b-0 sm:flex-row sm:items-center sm:gap-4"
           >
-            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-[9px]">
-              {item.produit.miniature ? (
-                // eslint-disable-next-line @next/next/no-img-element -- vignette backend, pas de config next/image en V1.
-                <img src={item.produit.miniature} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <PhotoPlaceholder />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[15px] font-medium text-ink">{item.produit.titre}</div>
-              <div className="text-[13px] text-brand-subtle">
-                {item.quantite} × {formatPrixGNF(item.produit.prix)}
+            <div className="flex min-w-0 items-center gap-4 sm:flex-1">
+              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-[9px]">
+                {item.produit.miniature ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- vignette backend, pas de config next/image en V1.
+                  <img src={item.produit.miniature} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <PhotoPlaceholder />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div
+                  className={
+                    "text-[15px] font-medium text-ink " + (isBrouillon ? "sm:truncate" : "truncate")
+                  }
+                >
+                  {item.produit.titre}
+                </div>
+                <div className="text-[13px] text-brand-subtle">
+                  {item.quantite} × {formatPrixGNF(item.produit.prix)}
+                </div>
               </div>
             </div>
             {isBrouillon ? (
-              <div className="flex shrink-0 items-center gap-3">
+              <div className="flex shrink-0 items-center gap-3 pl-[72px] sm:pl-0">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => handleQuantiteChange(item, item.quantite - 1)}
                     disabled={itemActionPendingId === item.produitId || item.quantite <= 1}
                     aria-label={`Diminuer la quantité de ${item.produit.titre}`}
-                    className="grid h-8 w-8 place-items-center rounded-full border border-border-strong text-[15px] text-ink transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+                    className="grid h-11 w-11 place-items-center rounded-full border border-border-strong text-[15px] text-ink transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     −
                   </button>
@@ -283,7 +291,7 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
                     onClick={() => handleQuantiteChange(item, item.quantite + 1)}
                     disabled={itemActionPendingId === item.produitId}
                     aria-label={`Augmenter la quantité de ${item.produit.titre}`}
-                    className="grid h-8 w-8 place-items-center rounded-full border border-border-strong text-[15px] text-ink transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+                    className="grid h-11 w-11 place-items-center rounded-full border border-border-strong text-[15px] text-ink transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     +
                   </button>
