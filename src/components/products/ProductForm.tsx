@@ -258,7 +258,9 @@ export function ProductForm({
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-[13px] text-brand-muted">Position — optionnelle</span>
+        <span className="text-[13px] text-brand-muted">
+          Où les acheteurs peuvent te trouver ? — optionnel
+        </span>
         <div className="flex flex-wrap items-center gap-3">
           <Button
             type="button"
@@ -267,11 +269,13 @@ export function ProductForm({
             onClick={handleUsePosition}
             disabled={submitting || geoStatus === "asking"}
           >
-            {geoStatus === "asking" ? "Localisation…" : "Utiliser ma position"}
+            {geoStatus === "asking"
+              ? "Localisation…"
+              : "Je suis sur mon lieu de vente — utiliser ma position"}
           </Button>
           {latitude !== null && longitude !== null ? (
             <span className="text-[12.5px] text-brand-subtle">
-              {latitude.toFixed(4)}, {longitude.toFixed(4)}{" "}
+              ✓ Position enregistrée{" "}
               <button
                 type="button"
                 onClick={handleClearPosition}
@@ -286,6 +290,11 @@ export function ProductForm({
             </span>
           ) : null}
         </div>
+        {latitude === null || longitude === null ? (
+          <p className="text-[12.5px] text-brand-subtle">
+            Sans position, ton produit n&apos;apparaîtra pas dans le tri par distance.
+          </p>
+        ) : null}
       </div>
 
       <Button

@@ -75,7 +75,9 @@ describe("ProductForm", () => {
       "185 000",
     );
     expect(screen.getByLabelText("Catégorie")).toHaveValue("c2");
-    expect(screen.getByText(/9\.6412, -13\.5784/)).toBeInTheDocument();
+    expect(screen.getByText("✓ Position enregistrée")).toBeInTheDocument();
+    expect(screen.queryByText(/9\.6412/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/-13\.5784/)).not.toBeInTheDocument();
   });
 
   it("formats the price with thousand separators as the user types", async () => {
@@ -188,26 +190,86 @@ describe("ProductForm", () => {
     });
   });
 
-  it("fills latitude/longitude after clicking « Utiliser ma position »", async () => {
+  it("shows the distance-sort consequence message while no position is set, and never shows raw coordinates", async () => {
     stubGeolocation((success) => {
       success({ coords: { latitude: 9.6412, longitude: -13.5784 } } as GeolocationPosition);
     });
     const user = userEvent.setup();
     renderForm();
 
-    await user.click(screen.getByRole("button", { name: "Utiliser ma position" }));
+    expect(
+      screen.getByText(
+        "Sans position, ton produit n'apparaîtra pas dans le tri par distance.",
+      ),
+    ).toBeInTheDocument();
 
-    await waitFor(() => expect(screen.getByText(/9\.6412, -13\.5784/)).toBeInTheDocument());
+    await user.click(
+      screen.getByRole("button", { name: "Je suis sur mon lieu de vente — utiliser ma position" }),
+    );
+
+    await waitFor(() => expect(screen.getByText("✓ Position enregistrée")).toBeInTheDocument());
+    expect(
+      screen.queryByText(
+        "Sans position, ton produit n'apparaîtra pas dans le tri par distance.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/9\.6412/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/-13\.5784/)).not.toBeInTheDocument();
   });
 
-  it("clears the position when « Retirer » is clicked", async () => {
+  it("clears the position when « Retirer » is clicked, and the consequence message returns", async () => {
     const user = userEvent.setup();
     renderForm({
       initialValues: { latitude: 9.6412, longitude: -13.5784 },
     });
 
+    expect(screen.getByText("✓ Position enregistrée")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Sans position, ton produit n'apparaîtra pas dans le tri par distance.",
+      ),
+    ).not.toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: "Retirer" }));
 
-    expect(screen.queryByText(/9\.6412, -13\.5784/)).not.toBeInTheDocument();
+    expect(screen.queryByText("✓ Position enregistrée")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Sans position, ton produit n'apparaîtra pas dans le tri par distance.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("submits latitude/longitude in the payload after capturing the position", async () => {
+    stubGeolocation((success) => {
+      success({ coords: { latitude: 9.6412, longitude: -13.5784 } } as GeolocationPosition);
+    });
+    const user = userEvent.setup();
+    let received: ProductFormPayload | undefined;
+    const onSubmit = vi.fn((payload: ProductFormPayload) => {
+      received = payload;
+    });
+    renderForm({ onSubmit });
+
+    await user.type(screen.getByLabelText("Titre du produit"), "Pagne wax");
+    await user.type(screen.getByLabelText("Description"), "Tissu wax authentique.");
+    await user.type(screen.getByLabelText("Prix (GNF)"), "185000");
+    await user.selectOptions(screen.getByLabelText("Catégorie"), "c1");
+    await user.click(
+      screen.getByRole("button", { name: "Je suis sur mon lieu de vente — utiliser ma position" }),
+    );
+    await waitFor(() => expect(screen.getByText("✓ Position enregistrée")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: "Publier le produit" }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(received).toEqual({
+      titre: "Pagne wax",
+      description: "Tissu wax authentique.",
+      prix: 185000,
+      categorieId: "c1",
+      latitude: 9.6412,
+      longitude: -13.5784,
+    });
   });
 });
