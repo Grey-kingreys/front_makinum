@@ -1,4 +1,5 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GeoProvider } from "@/lib/geo";
@@ -9,11 +10,18 @@ import type { PurchaseRequestView } from "@/lib/purchase-requests/types";
 
 import { Sidebar } from "./Sidebar";
 
-const { usePathnameMock, pushMock, listPurchaseRequestsMock, listNotificationsMock } = vi.hoisted(() => ({
+const {
+  usePathnameMock,
+  pushMock,
+  listPurchaseRequestsMock,
+  listNotificationsMock,
+  useInstallPromptMock,
+} = vi.hoisted(() => ({
   usePathnameMock: vi.fn(() => "/vendeur/catalogue"),
   pushMock: vi.fn(),
   listPurchaseRequestsMock: vi.fn(),
   listNotificationsMock: vi.fn(),
+  useInstallPromptMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -29,6 +37,21 @@ vi.mock("@/lib/purchase-requests/api", () => ({
 vi.mock("@/lib/notifications/api", () => ({
   listNotifications: listNotificationsMock,
 }));
+
+// T70 : `useInstallPrompt` (src/lib/pwa/install.ts) est testé isolément dans
+// src/lib/pwa/install.test.ts (capture de l'évènement, consommation,
+// détection standalone/iOS) — ici on ne teste que le rendu de la sidebar en
+// fonction de son résultat, donc un mock direct plutôt qu'une simulation de
+// `beforeinstallprompt`.
+vi.mock("@/lib/pwa/install", () => ({
+  useInstallPrompt: useInstallPromptMock,
+}));
+
+/** Par défaut, aucune entrée d'installation (ni canPrompt ni iOS) — les tests
+ * qui ne portent pas sur T70 ne doivent pas voir apparaître ce bouton. */
+function defaultInstallPromptResult() {
+  return { canPrompt: false, promptInstall: vi.fn().mockResolvedValue(undefined), isIOS: false, isStandalone: false };
+}
 
 function makeUser(overrides: Partial<PublicUser> = {}): PublicUser {
   return {
@@ -95,6 +118,8 @@ describe("Sidebar", () => {
     listPurchaseRequestsMock.mockResolvedValue([]);
     listNotificationsMock.mockReset();
     listNotificationsMock.mockResolvedValue({ items: [], total: 0, nbNonLues: 0 });
+    useInstallPromptMock.mockReset();
+    useInstallPromptMock.mockReturnValue(defaultInstallPromptResult());
   });
 
   it("renders the Makinum logo linking to /produits, with the wordmark still shown as text (T41)", async () => {
@@ -250,6 +275,8 @@ describe("Sidebar", () => {
 describe("Sidebar — visiteur (user === null, T51)", () => {
   beforeEach(() => {
     usePathnameMock.mockReturnValue("/produits");
+    useInstallPromptMock.mockReset();
+    useInstallPromptMock.mockReturnValue(defaultInstallPromptResult());
   });
 
   it("renders only the public catalogue links (Produits proches, Vendeurs) — no dashboard, no role-only links", () => {
@@ -287,5 +314,126 @@ describe("Sidebar — visiteur (user === null, T51)", () => {
     render(<Sidebar user={null} />);
 
     expect(screen.queryByRole("link", { name: /Notifications/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("Sidebar — bouton d'installation PWA (T70, remplace le bandeau T67②)", () => {
+  beforeEach(() => {
+    // `renderSidebar()` (mode connecté) attend exactement 2 appels à
+    // listPurchaseRequestsMock / 1 à listNotificationsMock depuis son propre
+    // rendu — sans ce reset, les compteurs cumulés par les describe
+    // précédents (partagent les mêmes mocks hoisted) font échouer cette
+    // attente. Même remise à zéro que le beforeEach du describe "Sidebar".
+    usePathnameMock.mockReturnValue("/vendeur/catalogue");
+    listPurchaseRequestsMock.mockReset();
+    listPurchaseRequestsMock.mockResolvedValue([]);
+    listNotificationsMock.mockReset();
+    listNotificationsMock.mockResolvedValue({ items: [], total: 0, nbNonLues: 0 });
+  });
+
+  it("shows an « Installer l'application » button when canPrompt is true (connected mode), and clicking it calls promptInstall()", async () => {
+    const promptInstall = vi.fn().mockResolvedValue(undefined);
+    useInstallPromptMock.mockReturnValue({
+      canPrompt: true,
+      promptInstall,
+      isIOS: false,
+      isStandalone: false,
+    });
+    await renderSidebar(makeUser({ role: "ACHETEUR" }));
+
+    const button = screen.getByRole("button", { name: "Installer l'application" });
+    await userEvent.click(button);
+
+    expect(promptInstall).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the same button in visitor mode (user === null), and clicking it calls promptInstall()", async () => {
+    const promptInstall = vi.fn().mockResolvedValue(undefined);
+    useInstallPromptMock.mockReturnValue({
+      canPrompt: true,
+      promptInstall,
+      isIOS: false,
+      isStandalone: false,
+    });
+    render(<Sidebar user={null} />);
+
+    const button = screen.getByRole("button", { name: "Installer l'application" });
+    await userEvent.click(button);
+
+    expect(promptInstall).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders a link to /aide instead of a button on iOS (connected mode)", async () => {
+    useInstallPromptMock.mockReturnValue({
+      canPrompt: false,
+      promptInstall: vi.fn(),
+      isIOS: true,
+      isStandalone: false,
+    });
+    await renderSidebar(makeUser({ role: "ACHETEUR" }));
+
+    expect(screen.getByRole("link", { name: "Installer l'application" })).toHaveAttribute("href", "/aide");
+    expect(screen.queryByRole("button", { name: "Installer l'application" })).not.toBeInTheDocument();
+  });
+
+  it("renders a link to /aide instead of a button on iOS (visitor mode)", () => {
+    useInstallPromptMock.mockReturnValue({
+      canPrompt: false,
+      promptInstall: vi.fn(),
+      isIOS: true,
+      isStandalone: false,
+    });
+    render(<Sidebar user={null} />);
+
+    expect(screen.getByRole("link", { name: "Installer l'application" })).toHaveAttribute("href", "/aide");
+    expect(screen.queryByRole("button", { name: "Installer l'application" })).not.toBeInTheDocument();
+  });
+
+  it("hides the entry when already standalone, even if canPrompt is true (connected mode)", async () => {
+    useInstallPromptMock.mockReturnValue({
+      canPrompt: true,
+      promptInstall: vi.fn(),
+      isIOS: false,
+      isStandalone: true,
+    });
+    await renderSidebar(makeUser({ role: "ACHETEUR" }));
+
+    expect(screen.queryByText("Installer l'application")).not.toBeInTheDocument();
+  });
+
+  it("hides the entry when already standalone, even if isIOS is true (visitor mode)", () => {
+    useInstallPromptMock.mockReturnValue({
+      canPrompt: false,
+      promptInstall: vi.fn(),
+      isIOS: true,
+      isStandalone: true,
+    });
+    render(<Sidebar user={null} />);
+
+    expect(screen.queryByText("Installer l'application")).not.toBeInTheDocument();
+  });
+
+  it("hides the entry when neither canPrompt nor isIOS applies (ex. desktop Firefox) — no dead button (connected mode)", async () => {
+    useInstallPromptMock.mockReturnValue({
+      canPrompt: false,
+      promptInstall: vi.fn(),
+      isIOS: false,
+      isStandalone: false,
+    });
+    await renderSidebar(makeUser({ role: "ACHETEUR" }));
+
+    expect(screen.queryByText("Installer l'application")).not.toBeInTheDocument();
+  });
+
+  it("hides the entry when neither canPrompt nor isIOS applies (visitor mode)", () => {
+    useInstallPromptMock.mockReturnValue({
+      canPrompt: false,
+      promptInstall: vi.fn(),
+      isIOS: false,
+      isStandalone: false,
+    });
+    render(<Sidebar user={null} />);
+
+    expect(screen.queryByText("Installer l'application")).not.toBeInTheDocument();
   });
 });

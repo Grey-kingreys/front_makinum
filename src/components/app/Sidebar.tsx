@@ -9,6 +9,7 @@ import { buildInscriptionHref, buildLoginHref } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { useGeo } from "@/lib/geo";
 import { initialsFromName } from "@/lib/format";
+import { useInstallPrompt } from "@/lib/pwa/install";
 import { useDemandes, useDemandesRecues } from "@/lib/purchase-requests";
 import type { PublicUser } from "@/lib/auth/types";
 
@@ -33,6 +34,13 @@ import { SearchField } from "./SearchField";
  * (/admin/vendeurs) et « Catégories » (/admin/categories, T31b).
  * Bloc profil du bas (tous rôles connectés) : entrée « Mon compte »
  * (/compte, T68b) juste au-dessus de « Se déconnecter ».
+ * « Installer l'application » (T70, remplace le bandeau dismissible T67② —
+ * retour utilisateur : « une fois disparu il ne revient plus ») : entrée
+ * permanente du pied de sidebar, visiteur ET connecté (`InstallAppEntry`,
+ * pilotée par `useInstallPrompt()`, cf. src/lib/pwa/install.ts). Absente si
+ * déjà installée (`isStandalone`) ou si ni `canPrompt` (Chrome/Android) ni
+ * `isIOS` (Safari) ne s'appliquent (ex. desktop Firefox) — jamais d'entrée
+ * mène nulle part.
  * La cloche de notifications (NotificationBell, /notifications) est dans la
  * rangée d'en-tête, visible aussi bien repliée (barre mobile) que dépliée
  * (sidebar desktop).
@@ -85,6 +93,11 @@ const VISITOR_LINKS = [
   { href: "/produits", label: "Produits proches" },
   { href: "/vendeurs", label: "Vendeurs" },
 ] as const;
+
+/** Traitement visuel commun aux entrées « texte » du pied de sidebar
+ * (« Mon compte », « Se déconnecter », « Installer l'application », T70). */
+const FOOTER_ENTRY_CLASS =
+  "rounded-[9px] px-[10px] py-2 text-left text-[13.5px] text-cream/62 transition-colors hover:bg-cream/8 hover:text-cream";
 
 interface SidebarProps {
   user: PublicUser | null;
@@ -180,6 +193,43 @@ function VisitorNav({ onNavigate }: { onNavigate: () => void }) {
   );
 }
 
+/**
+ * T70 : entrée d'installation PWA, pied de sidebar, visiteur ET connecté —
+ * remplace le bandeau dismissible T67② (`InstallPrompt`, supprimé). Trois
+ * états, selon `useInstallPrompt()` (src/lib/pwa/install.ts) :
+ * - `isStandalone` (déjà installée) → rien (pas d'entrée morte) ;
+ * - `canPrompt` (Chrome/Android, évènement `beforeinstallprompt` capté au
+ *   niveau module, potentiellement bien avant ce montage) → bouton, clic
+ *   déclenche l'invite native puis consomme l'évènement ;
+ * - `isIOS` (Safari, qui n'émet jamais `beforeinstallprompt`) → lien vers
+ *   /aide, dont la section « Installer l'application » explique le geste
+ *   manuel (Partager → Sur l'écran d'accueil) ;
+ * - ni l'un ni l'autre (desktop Firefox, évènement pas encore émis…) → rien.
+ */
+function InstallAppEntry({ onNavigate }: { onNavigate: () => void }) {
+  const { canPrompt, promptInstall, isIOS, isStandalone } = useInstallPrompt();
+
+  if (isStandalone) return null;
+
+  if (canPrompt) {
+    return (
+      <button type="button" onClick={() => void promptInstall()} className={FOOTER_ENTRY_CLASS}>
+        Installer l&apos;application
+      </button>
+    );
+  }
+
+  if (isIOS) {
+    return (
+      <Link href="/aide" onClick={onNavigate} className={FOOTER_ENTRY_CLASS}>
+        Installer l&apos;application
+      </Link>
+    );
+  }
+
+  return null;
+}
+
 function AuthenticatedFooter({
   user,
   onLogout,
@@ -210,29 +260,25 @@ function AuthenticatedFooter({
         </div>
       </div>
 
+      {/* T70 : « Installer l'application », juste au-dessus de « Mon
+          compte » — cf. InstallAppEntry pour les conditions d'affichage. */}
+      <InstallAppEntry onNavigate={onNavigate} />
+
       {/* T68b : entrée « Mon compte », tous rôles — juste au-dessus de « Se
           déconnecter », même traitement visuel (lien plutôt que bouton, seule
           différence : la navigation plutôt qu'une action). */}
-      <Link
-        href="/compte"
-        onClick={onNavigate}
-        className="rounded-[9px] px-[10px] py-2 text-left text-[13.5px] text-cream/62 transition-colors hover:bg-cream/8 hover:text-cream"
-      >
+      <Link href="/compte" onClick={onNavigate} className={FOOTER_ENTRY_CLASS}>
         Mon compte
       </Link>
 
-      <button
-        type="button"
-        onClick={onLogout}
-        className="rounded-[9px] px-[10px] py-2 text-left text-[13.5px] text-cream/62 transition-colors hover:bg-cream/8 hover:text-cream"
-      >
+      <button type="button" onClick={onLogout} className={FOOTER_ENTRY_CLASS}>
         Se déconnecter
       </button>
     </>
   );
 }
 
-function VisitorFooter({ returnTo }: { returnTo: string }) {
+function VisitorFooter({ returnTo, onNavigate }: { returnTo: string; onNavigate: () => void }) {
   return (
     <div className="flex flex-col gap-2 border-t border-cream/14 pt-[14px]">
       <Link
@@ -247,6 +293,13 @@ function VisitorFooter({ returnTo }: { returnTo: string }) {
       >
         Créer un compte
       </Link>
+
+      {/* T70 : « Installer l'application » — sous les CTA de conversion
+          (connexion/inscription restent prioritaires), même traitement
+          visuel que les entrées du pied de sidebar en mode connecté (Mon
+          compte / Se déconnecter). Cf. InstallAppEntry pour les conditions
+          d'affichage. */}
+      <InstallAppEntry onNavigate={onNavigate} />
     </div>
   );
 }
@@ -313,7 +366,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
         {user ? (
           <AuthenticatedFooter user={user} onLogout={onLogout} onNavigate={closeMobileNav} />
         ) : (
-          <VisitorFooter returnTo={pathname ?? "/produits"} />
+          <VisitorFooter returnTo={pathname ?? "/produits"} onNavigate={closeMobileNav} />
         )}
       </div>
     </div>
