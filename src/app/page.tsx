@@ -207,7 +207,7 @@ export default function Home() {
             <Link href="/confidentialite" className="text-cream/55 transition-colors hover:text-cream">
               Confidentialité
             </Link>
-            <span>Conakry, Guinée · V1 MVP</span>
+            <span>Conakry, Guinée</span>
           </div>
         </div>
       </footer>

@@ -311,4 +311,14 @@ describe("InscriptionForm", () => {
     );
     expect(pushMock).not.toHaveBeenCalled();
   });
+
+  it("renders CGU and confidentialité links with acceptance text", () => {
+    renderForm();
+
+    expect(screen.getByText(/En créant un compte, tu acceptes les/)).toBeInTheDocument();
+    const cguLink = screen.getByRole("link", { name: "CGU" });
+    const confidentialiteLink = screen.getByRole("link", { name: "politique de confidentialité" });
+    expect(cguLink).toHaveAttribute("href", "/cgu");
+    expect(confidentialiteLink).toHaveAttribute("href", "/confidentialite");
+  });
 });

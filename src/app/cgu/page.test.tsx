@@ -15,14 +15,14 @@ describe("CGU page", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the legal review notice", () => {
+  it("does not render the legal review notice", () => {
     render(<Page />);
 
     expect(
-      screen.getByText(
+      screen.queryByText(
         "Document de travail — à faire relire par un conseil juridique avant mise en production.",
       ),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
   });
 
   it("renders a link back to the home page", () => {

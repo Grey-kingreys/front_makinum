@@ -194,7 +194,7 @@ export function RecuperationForm() {
         Récupérer mon compte
       </h1>
       <p className="mb-6 text-[14.5px] text-brand-subtle">
-        Indique ton email (ou ton numéro vérifié) pour recevoir un code de réinitialisation.
+        Indique ton email pour recevoir un code de réinitialisation.
       </p>
 
       {error ? (

@@ -127,7 +127,7 @@ describe("ConnexionForm", () => {
 
     renderPage();
 
-    await user.type(screen.getByLabelText("Email ou numéro vérifié"), "+224622000000");
+    await user.type(screen.getByLabelText("Email"), "+224622000000");
     await user.type(screen.getByLabelText("Mot de passe"), "secret123");
     await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
@@ -144,7 +144,7 @@ describe("ConnexionForm", () => {
 
       renderPage();
 
-      await user.type(screen.getByLabelText("Email ou numéro vérifié"), "+224622000000");
+      await user.type(screen.getByLabelText("Email"), "+224622000000");
       await user.type(screen.getByLabelText("Mot de passe"), "secret123");
       await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
@@ -159,7 +159,7 @@ describe("ConnexionForm", () => {
 
     renderPage();
 
-    await user.type(screen.getByLabelText("Email ou numéro vérifié"), "+224622000000");
+    await user.type(screen.getByLabelText("Email"), "+224622000000");
     await user.type(screen.getByLabelText("Mot de passe"), "secret123");
     await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
@@ -186,7 +186,7 @@ describe("ConnexionForm", () => {
 
     renderPage();
 
-    await user.type(screen.getByLabelText("Email ou numéro vérifié"), "+224622000000");
+    await user.type(screen.getByLabelText("Email"), "+224622000000");
     await user.type(screen.getByLabelText("Mot de passe"), "wrong");
     await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
@@ -211,7 +211,7 @@ describe("ConnexionForm", () => {
 
     renderPage();
 
-    await user.type(screen.getByLabelText("Email ou numéro vérifié"), "fatoumata@exemple.gn");
+    await user.type(screen.getByLabelText("Email"), "fatoumata@exemple.gn");
     await user.type(screen.getByLabelText("Mot de passe"), "secret123");
     await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
@@ -235,7 +235,7 @@ describe("ConnexionForm", () => {
 
     renderPage();
 
-    await user.type(screen.getByLabelText("Email ou numéro vérifié"), "+224622000000");
+    await user.type(screen.getByLabelText("Email"), "+224622000000");
     await user.type(screen.getByLabelText("Mot de passe"), "secret123");
     await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
@@ -254,7 +254,7 @@ describe("ConnexionForm", () => {
 
     renderPage();
 
-    await user.type(screen.getByLabelText("Email ou numéro vérifié"), "+224622000000");
+    await user.type(screen.getByLabelText("Email"), "+224622000000");
     await user.type(screen.getByLabelText("Mot de passe"), "secret123");
     await user.click(screen.getByRole("button", { name: "Se connecter" }));
 

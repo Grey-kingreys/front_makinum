@@ -214,6 +214,17 @@ export function InscriptionForm() {
         <p className="text-[12.5px] leading-relaxed text-brand-faint">
           Code envoyé par email, une seule fois. Nombre de demandes limité par heure.
         </p>
+        <p className="text-[12.5px] leading-relaxed text-brand-faint">
+          En créant un compte, tu acceptes les{" "}
+          <Link href="/cgu" className="text-brand underline hover:text-accent-strong">
+            CGU
+          </Link>
+          {" "}et la{" "}
+          <Link href="/confidentialite" className="text-brand underline hover:text-accent-strong">
+            politique de confidentialité
+          </Link>
+          .
+        </p>
       </form>
 
       <p className="mt-6 text-center text-[13.5px] text-brand-subtle">

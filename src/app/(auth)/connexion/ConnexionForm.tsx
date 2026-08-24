@@ -88,7 +88,7 @@ export function ConnexionForm() {
       <h1 className="mb-1.5 font-display text-[27px] font-bold tracking-tight text-ink">
         Se connecter
       </h1>
-      <p className="mb-6 text-[14.5px] text-brand-subtle">Avec ton email ou ton numéro vérifié.</p>
+      <p className="mb-6 text-[14.5px] text-brand-subtle">Avec ton email et ton mot de passe.</p>
 
       <GoogleAuthButton />
 
@@ -117,7 +117,7 @@ export function ConnexionForm() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-[14px]">
         <Input
-          label="Email ou numéro vérifié"
+          label="Email"
           name="identifiant"
           autoComplete="username"
           placeholder="fatoumata@exemple.gn"

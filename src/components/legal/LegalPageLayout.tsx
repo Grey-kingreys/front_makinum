@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
-import { Alert } from "@/components/ui";
-
 export interface LegalTocEntry {
   /** Doit correspondre à l'`id` du <h2> de la section dans le contenu. */
   id: string;
@@ -59,10 +57,6 @@ export function LegalPageLayout({ title, lastUpdated, sommaire, children }: Lega
             Dernière mise à jour&nbsp;: {formatDate(lastUpdated)}
           </p>
         </header>
-
-        <Alert variant="neutral" className="mt-6">
-          Document de travail — à faire relire par un conseil juridique avant mise en production.
-        </Alert>
 
         {sommaire && sommaire.length > 0 ? (
           <nav aria-label="Sommaire" className="mt-8 rounded-xl border border-border bg-white p-5">
