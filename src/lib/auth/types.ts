@@ -34,6 +34,19 @@ export interface PublicUser {
   autoriseAdminPublication: boolean;
   latitude?: number | null;
   longitude?: number | null;
+  /**
+   * Lieu de vente du compte vendeur (T66a, `PATCH /vendeur/parametres`) —
+   * réglé une fois, sert à pré-remplir la position de chaque nouvelle
+   * publication côté formulaire produit (T66b, voir
+   * src/components/products/ProductForm.tsx). `null` tant que non renseigné
+   * ou après retrait. Toujours présent (même convention que
+   * `autoriseAdminPublication` : le backend ne l'omet jamais), sans
+   * signification pour les rôles ACHETEUR/ADMIN. Distinct de la position
+   * éventuelle d'un produit individuel (`ProductView.latitude/longitude`,
+   * src/lib/products/types.ts) : ce champ-ci vit sur le compte, pas sur un
+   * produit.
+   */
+  lieuVente: { latitude: number; longitude: number } | null;
 }
 
 export interface LoginResponse {

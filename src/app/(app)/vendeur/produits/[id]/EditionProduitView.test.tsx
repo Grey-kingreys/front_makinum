@@ -112,6 +112,26 @@ describe("EditionProduitView", () => {
     expect(getProductMock).toHaveBeenCalledWith("p1");
   });
 
+  it(
+    "never shows the vendor-location prefill message (T66b) — edition only ever reflects the " +
+      "product's own position, never the account's lieu de vente",
+    async () => {
+      getProductMock.mockResolvedValueOnce(makeProduct({ latitude: null, longitude: null }));
+      renderView();
+
+      await screen.findByLabelText("Titre du produit");
+
+      expect(
+        screen.queryByText(
+          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+        ),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Sans position, ton produit n'apparaîtra pas dans le tri par distance."),
+      ).toBeInTheDocument();
+    },
+  );
+
   it("shows a not-found message when the product doesn't exist", async () => {
     getProductMock.mockRejectedValueOnce(new ApiError(404, "Produit introuvable", "PRODUCT_NOT_FOUND"));
     renderView();

@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PublicUser } from "@/lib/auth/types";
+import { GeoProvider } from "@/lib/geo";
 
 import VendeurParametresPage from "./page";
 
@@ -30,6 +31,7 @@ function makeUser(overrides: Partial<PublicUser> = {}): PublicUser {
     autoriseAdminPublication: false,
     latitude: null,
     longitude: null,
+    lieuVente: null,
     ...overrides,
   };
 }
@@ -54,7 +56,11 @@ describe("VendeurParametresPage", () => {
       refresh: vi.fn(),
     });
 
-    render(<VendeurParametresPage />);
+    render(
+      <GeoProvider>
+        <VendeurParametresPage />
+      </GeoProvider>,
+    );
 
     expect(screen.getByRole("heading", { name: "Paramètres" })).toBeInTheDocument();
     expect(replaceMock).not.toHaveBeenCalled();
@@ -69,7 +75,11 @@ describe("VendeurParametresPage", () => {
       refresh: vi.fn(),
     });
 
-    render(<VendeurParametresPage />);
+    render(
+      <GeoProvider>
+        <VendeurParametresPage />
+      </GeoProvider>,
+    );
 
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/produits"));
     expect(screen.queryByRole("heading", { name: "Paramètres" })).not.toBeInTheDocument();
@@ -84,7 +94,11 @@ describe("VendeurParametresPage", () => {
       refresh: vi.fn(),
     });
 
-    render(<VendeurParametresPage />);
+    render(
+      <GeoProvider>
+        <VendeurParametresPage />
+      </GeoProvider>,
+    );
 
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/produits"));
     expect(screen.queryByRole("heading", { name: "Paramètres" })).not.toBeInTheDocument();

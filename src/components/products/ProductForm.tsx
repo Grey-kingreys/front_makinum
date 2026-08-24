@@ -13,6 +13,15 @@ import { useGeo } from "@/lib/geo";
  * position optionnelle. Le prix est manipulé en francs guinéens entiers
  * (GNF n'a pas de subdivision courante) : la valeur affichée est formatée
  * avec séparateur de milliers, la valeur soumise est un nombre entier.
+ *
+ * `vendorLocation` (T66b) : lieu de vente du compte (`user.lieuVente`,
+ * réglé une fois sur /vendeur/parametres), transmis UNIQUEMENT par l'écran
+ * de création (`NouveauProduitForm`) — jamais par l'édition
+ * (`EditionProduitView`, qui ne passe que `initialValues` tirées du
+ * produit). ProductForm reste volontairement sans dépendance à `useAuth`
+ * (pas de `<AuthProvider>` requis dans ses tests) : c'est à l'appelant de
+ * lire la session et de décider si ce contexte de création justifie le
+ * pré-remplissage.
  */
 
 export interface ProductFormPayload {
@@ -37,6 +46,12 @@ export interface ProductFormInitialValues {
 interface ProductFormProps {
   categories: CategoryListItem[];
   initialValues?: ProductFormInitialValues;
+  /**
+   * Lieu de vente du compte vendeur (T66b) — passé uniquement en création
+   * (voir doc du module ci-dessus). `undefined`/`null` : pas de
+   * pré-remplissage, comportement T65 inchangé.
+   */
+  vendorLocation?: { latitude: number; longitude: number } | null;
   submitLabel: string;
   submittingLabel: string;
   submitting: boolean;
@@ -63,6 +78,7 @@ function formatDigits(digits: string): string {
 export function ProductForm({
   categories,
   initialValues,
+  vendorLocation,
   submitLabel,
   submittingLabel,
   submitting,
@@ -70,13 +86,31 @@ export function ProductForm({
 }: ProductFormProps) {
   const { status: geoStatus, position, request } = useGeo();
 
+  // Pré-remplissage T66b : seulement si l'appelant a fourni un lieu de vente
+  // (création uniquement, voir doc du module) ET qu'aucune position n'est
+  // déjà dans le formulaire (édition avec position produit existante, ou
+  // `initialValues` explicites) — `initialValues` reste toujours prioritaire.
+  const hasInitialPosition = initialValues?.latitude != null && initialValues?.longitude != null;
+  const initialFromVendorLocation = !hasInitialPosition && vendorLocation != null;
+
   const [titre, setTitre] = useState(initialValues?.titre ?? "");
   const [description, setDescription] = useState(initialValues?.description ?? "");
   const [prixDigits, setPrixDigits] = useState(initialValues?.prix ?? "");
   const [categorieId, setCategorieId] = useState(initialValues?.categorieId ?? "");
-  const [latitude, setLatitude] = useState<number | null>(initialValues?.latitude ?? null);
-  const [longitude, setLongitude] = useState<number | null>(initialValues?.longitude ?? null);
+  const [latitude, setLatitude] = useState<number | null>(
+    initialValues?.latitude ?? vendorLocation?.latitude ?? null,
+  );
+  const [longitude, setLongitude] = useState<number | null>(
+    initialValues?.longitude ?? vendorLocation?.longitude ?? null,
+  );
   const [wantsPosition, setWantsPosition] = useState(false);
+  // Vrai tant que la position affichée est celle du lieu de vente du compte,
+  // jamais retouchée pour CE produit — bascule à `false` dès que le vendeur
+  // recapture explicitement sa position (elle devient « la » position de ce
+  // produit, plus celle du compte) ou la retire. Ne concerne que la
+  // création : `initialFromVendorLocation` est toujours `false` en édition
+  // (ProductForm n'y reçoit jamais `vendorLocation`).
+  const [fromVendorLocation, setFromVendorLocation] = useState(initialFromVendorLocation);
   const [errors, setErrors] = useState<ProductFormErrors>({});
 
   const noCategoriesAvailable = categories.length === 0;
@@ -122,6 +156,11 @@ export function ProductForm({
 
   function handleUsePosition() {
     setWantsPosition(true);
+    // Une recapture explicite remplace le lieu de vente pré-rempli par la
+    // position réelle du vendeur pour CE produit — le message repasse au
+    // « ✓ Position enregistrée » standard dès que la nouvelle position
+    // arrive (voir l'effet ci-dessus).
+    setFromVendorLocation(false);
     if (geoStatus === "idle" || geoStatus === "denied") {
       request();
     }
@@ -129,6 +168,7 @@ export function ProductForm({
 
   function handleClearPosition() {
     setWantsPosition(false);
+    setFromVendorLocation(false);
     setLatitude(null);
     setLongitude(null);
   }
@@ -275,7 +315,9 @@ export function ProductForm({
           </Button>
           {latitude !== null && longitude !== null ? (
             <span className="text-[12.5px] text-brand-subtle">
-              ✓ Position enregistrée{" "}
+              {fromVendorLocation
+                ? "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit."
+                : "✓ Position enregistrée"}{" "}
               <button
                 type="button"
                 onClick={handleClearPosition}

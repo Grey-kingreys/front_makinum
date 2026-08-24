@@ -272,4 +272,115 @@ describe("ProductForm", () => {
       longitude: -13.5784,
     });
   });
+
+  describe("vendorLocation (T66b — pré-remplissage depuis le lieu de vente du compte)", () => {
+    it("pre-fills latitude/longitude from vendorLocation and shows the vendor-location message, never raw coordinates", () => {
+      renderForm({ vendorLocation: { latitude: 9.6412, longitude: -13.5784 } });
+
+      expect(
+        screen.getByText(
+          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("✓ Position enregistrée")).not.toBeInTheDocument();
+      expect(screen.queryByText(/9\.6412/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/-13\.5784/)).not.toBeInTheDocument();
+    });
+
+    it("submits the vendorLocation coordinates untouched when the vendor doesn't interact with the position field", async () => {
+      const user = userEvent.setup();
+      let received: ProductFormPayload | undefined;
+      const onSubmit = vi.fn((payload: ProductFormPayload) => {
+        received = payload;
+      });
+      renderForm({ vendorLocation: { latitude: 9.6412, longitude: -13.5784 }, onSubmit });
+
+      await user.type(screen.getByLabelText("Titre du produit"), "Pagne wax");
+      await user.type(screen.getByLabelText("Description"), "Tissu wax authentique.");
+      await user.type(screen.getByLabelText("Prix (GNF)"), "185000");
+      await user.selectOptions(screen.getByLabelText("Catégorie"), "c1");
+      await user.click(screen.getByRole("button", { name: "Publier le produit" }));
+
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(received).toEqual({
+        titre: "Pagne wax",
+        description: "Tissu wax authentique.",
+        prix: 185000,
+        categorieId: "c1",
+        latitude: 9.6412,
+        longitude: -13.5784,
+      });
+    });
+
+    it("does not pre-fill and behaves like T65 when vendorLocation is absent", () => {
+      renderForm();
+
+      expect(
+        screen.queryByText(
+          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+        ),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("✓ Position enregistrée")).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Sans position, ton produit n'apparaîtra pas dans le tri par distance."),
+      ).toBeInTheDocument();
+    });
+
+    it("does not let vendorLocation override an explicit initialValues position (edition never receives vendorLocation, but this guards the precedence rule)", () => {
+      renderForm({
+        initialValues: { latitude: 1.111, longitude: 2.222 },
+        vendorLocation: { latitude: 9.6412, longitude: -13.5784 },
+      });
+
+      // Position affichée = celle du produit (initialValues), pas celle du
+      // compte : message standard, pas la mention lieu de vente.
+      expect(screen.getByText("✓ Position enregistrée")).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+        ),
+      ).not.toBeInTheDocument();
+    });
+
+    it("switches to the standard « ✓ Position enregistrée » message once the vendor explicitly recaptures their position", async () => {
+      stubGeolocation((success) => {
+        success({ coords: { latitude: 1.0, longitude: 2.0 } } as GeolocationPosition);
+      });
+      const user = userEvent.setup();
+      renderForm({ vendorLocation: { latitude: 9.6412, longitude: -13.5784 } });
+
+      expect(
+        screen.getByText(
+          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+        ),
+      ).toBeInTheDocument();
+
+      await user.click(
+        screen.getByRole("button", { name: "Je suis sur mon lieu de vente — utiliser ma position" }),
+      );
+
+      await waitFor(() => expect(screen.getByText("✓ Position enregistrée")).toBeInTheDocument());
+      expect(
+        screen.queryByText(
+          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+        ),
+      ).not.toBeInTheDocument();
+    });
+
+    it("clearing a vendorLocation-prefilled position returns to the T65 consequence message, and the account setting is untouched (only the form clears)", async () => {
+      const user = userEvent.setup();
+      renderForm({ vendorLocation: { latitude: 9.6412, longitude: -13.5784 } });
+
+      await user.click(screen.getByRole("button", { name: "Retirer" }));
+
+      expect(
+        screen.queryByText(
+          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+        ),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Sans position, ton produit n'apparaîtra pas dans le tri par distance."),
+      ).toBeInTheDocument();
+    });
+  });
 });

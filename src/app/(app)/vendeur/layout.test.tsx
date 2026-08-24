@@ -24,6 +24,7 @@ function makeUser(overrides: Partial<PublicUser> = {}): PublicUser {
     autoriseAdminPublication: false,
     latitude: null,
     longitude: null,
+    lieuVente: null,
     ...overrides,
   };
 }

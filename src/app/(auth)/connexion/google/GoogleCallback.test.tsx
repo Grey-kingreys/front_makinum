@@ -37,6 +37,7 @@ const DEMO_SESSION = {
     autoriseAdminPublication: false,
     latitude: null,
     longitude: null,
+    lieuVente: null,
   },
 };
 

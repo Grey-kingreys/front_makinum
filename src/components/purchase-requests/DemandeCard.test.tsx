@@ -45,6 +45,7 @@ const USER_WITH_PHONE: PublicUser = {
   autoriseAdminPublication: false,
   latitude: null,
   longitude: null,
+  lieuVente: null,
 };
 
 const USER_WITHOUT_PHONE: PublicUser = { ...USER_WITH_PHONE, telephone: null };

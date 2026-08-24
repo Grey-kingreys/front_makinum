@@ -52,6 +52,7 @@ const DEMO_USER: PublicUser = {
   autoriseAdminPublication: false,
   latitude: null,
   longitude: null,
+  lieuVente: null,
 };
 
 function renderShell() {

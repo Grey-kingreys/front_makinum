@@ -58,6 +58,7 @@ function makeAdmin(): PublicUser {
     autoriseAdminPublication: false,
     latitude: null,
     longitude: null,
+    lieuVente: null,
   };
 }
 
@@ -78,6 +79,7 @@ function makeUser(overrides: Partial<AdminUserView> = {}): AdminUserView {
     autoriseAdminPublication: false,
     latitude: null,
     longitude: null,
+    lieuVente: null,
     ...overrides,
   };
 }

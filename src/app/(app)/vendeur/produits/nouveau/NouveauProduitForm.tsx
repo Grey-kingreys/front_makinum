@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Alert } from "@/components/ui";
 import { ProductForm, type ProductFormPayload } from "@/components/products/ProductForm";
 import { ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { listCategories } from "@/lib/categories/api";
 import type { CategoryListItem } from "@/lib/categories/types";
 import { createProduct } from "@/lib/products/vendor-api";
@@ -36,6 +37,7 @@ function describeCreateError(error: unknown): string {
  */
 export function NouveauProduitForm() {
   const router = useRouter();
+  const { user } = useAuth();
   const [categories, setCategories] = useState<CategoryListItem[]>([]);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -129,6 +131,7 @@ export function NouveauProduitForm() {
       ) : (
         <ProductForm
           categories={categories}
+          vendorLocation={user?.lieuVente ?? null}
           submitLabel="Publier le produit"
           submittingLabel="Publication…"
           submitting={submitting}

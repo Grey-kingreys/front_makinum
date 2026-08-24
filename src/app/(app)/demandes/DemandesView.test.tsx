@@ -41,6 +41,7 @@ const DEMO_USER: PublicUser = {
   autoriseAdminPublication: false,
   latitude: null,
   longitude: null,
+  lieuVente: null,
 };
 
 vi.mock("@/lib/auth", () => ({ useAuth: useAuthMock }));
