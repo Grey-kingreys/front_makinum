@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { Alert, Button } from "@/components/ui";
+import { SearchField } from "@/components/app/SearchField";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ApiError } from "@/lib/api";
 import { listCategories } from "@/lib/categories/api";
@@ -15,10 +16,12 @@ import type { ProductSearchItem, TriProduits } from "@/lib/products/types";
 
 /**
  * Page « Près de toi, maintenant » (/produits) — écran isHome du prototype.
- * Géoloc via useGeo() (partagée avec la sidebar) : avec position connue, tri
- * par proximité et rayon réglable ; sans position (refus/indisponibilité),
- * bandeau d'invitation + repli sur tri=recent (accepté par le backend) et
- * toggle « Plus proche » désactivé.
+ * Géoloc via useGeo() (partagée avec la sidebar) : JAMAIS demandée
+ * automatiquement (T64) — seulement au clic sur « Activer ma position » ou
+ * sur le tri « Plus proche » quand aucune position n'est connue. Avec
+ * position connue, tri par proximité et rayon réglable ; sans position
+ * (idle/refus/indisponibilité), bandeau d'invitation + repli sur tri=recent
+ * (accepté par le backend).
  */
 
 const RAYONS = [5, 25, 50] as const;
@@ -43,6 +46,11 @@ function SkeletonCard() {
 export function ProduitsView() {
   const searchParams = useSearchParams();
   const q = searchParams.get("q")?.trim() || "";
+  // Lu une seule fois, à l'arrivée sur la page (T64③) — une tuile catégorie
+  // de la landing pointe vers /produits?categorie=<slug>. Validé contre la
+  // liste des catégories une fois celle-ci chargée ci-dessous ; un slug
+  // inconnu ou absent laisse categorieSlug à null (chip « Tous »).
+  const categorieParam = searchParams.get("categorie")?.trim() || null;
   const { status: geoStatus, position, request } = useGeo();
 
   const [rayon, setRayon] = useState<number>(DEFAULT_RAYON);
@@ -57,18 +65,22 @@ export function ProduitsView() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Tente la géoloc automatiquement à l'arrivée sur la page (idempotent :
-  // sans effet si une position est déjà mémorisée en sessionStorage).
-  useEffect(() => {
-    if (geoStatus === "idle") request();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule tentative au montage.
-  }, []);
+  // T64① : la géoloc n'est plus jamais demandée au montage — seulement au
+  // clic sur « Activer ma position » (bandeau) ou sur le tri « Plus proche »
+  // sans position connue (cf. plus bas). `useGeo()`/`useGeolocation` restent
+  // idempotents : une position déjà en sessionStorage arrive directement à
+  // l'état `granted`, sans passer par `request()`.
 
   useEffect(() => {
     let cancelled = false;
     listCategories()
       .then((list) => {
-        if (!cancelled) setCategories(list);
+        if (cancelled) return;
+        setCategories(list);
+        const topLevel = list.filter((c) => c.parentId === null);
+        if (categorieParam && topLevel.some((c) => c.slug === categorieParam)) {
+          setCategorieSlug(categorieParam);
+        }
       })
       .catch(() => {
         // Chips catégories non bloquantes — la recherche fonctionne sans.
@@ -76,6 +88,7 @@ export function ProduitsView() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- categorieParam lu une seule fois, à l'arrivée sur la page.
   }, []);
 
   const hasPosition = position !== null;
@@ -134,8 +147,23 @@ export function ProduitsView() {
       }`
     : `${total} produit${total > 1 ? "s" : ""} actif${total > 1 ? "s" : ""} · triés par plus récents`;
 
+  // T64① : cliquer « Plus proche » sans position connue déclenche la demande
+  // de géoloc (le tri « proche » ne s'applique réellement qu'une fois la
+  // permission accordée — cf. `effectiveTri` plus haut, qui replie sur
+  // « recent » tant que `hasPosition` est faux).
+  function handleSortProche() {
+    setSortPref("proche");
+    if (!hasPosition) request();
+  }
+
   return (
     <div className="mx-auto max-w-[1280px] px-6 pb-[60px] pt-[28px] sm:px-8 lg:px-10">
+      {/* T64② : recherche visible en tête de page, mobile comme desktop —
+          même mécanique (debounce + navigation ?q=) que le champ de la
+          sidebar, factorisée dans SearchField (props de style/valeur
+          initiale). */}
+      <SearchField initialValue={q} variant="page" className="mb-5 sm:max-w-md" />
+
       <div className="mb-[22px] flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <h1 className="mb-1.5 font-display text-[27px] font-bold tracking-tight text-ink sm:text-[33px]">
@@ -146,18 +174,18 @@ export function ProduitsView() {
         <div className="flex gap-2">
           <button
             type="button"
-            disabled={!hasPosition}
-            onClick={() => setSortPref("proche")}
+            disabled={geoStatus === "asking"}
+            onClick={handleSortProche}
             className={cn(
               "rounded-full border px-[15px] py-[9px] text-[13.5px] transition-colors",
-              !hasPosition
-                ? "cursor-not-allowed border-border text-brand-faint opacity-60"
-                : sortPref === "proche"
+              geoStatus === "asking"
+                ? "cursor-wait border-border text-brand-faint opacity-60"
+                : sortPref === "proche" && hasPosition
                   ? "border-brand bg-brand text-cream"
                   : "border-border-strong bg-white text-ink hover:border-brand",
             )}
           >
-            Plus proche
+            {geoStatus === "asking" ? "Localisation…" : "Plus proche"}
           </button>
           <button
             type="button"
@@ -174,11 +202,24 @@ export function ProduitsView() {
         </div>
       </div>
 
-      {geoStatus === "denied" ? (
+      {/* T64① : visible tant qu'aucune position n'est connue (idle/asking/
+          denied) — la géoloc n'est plus jamais demandée d'office, ce bandeau
+          est donc désormais le déclencheur principal, avec une phrase
+          d'explication avant le bouton pour rassurer un public non
+          technicien avant la popup navigateur. */}
+      {!hasPosition ? (
         <Alert variant="neutral" className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <span>Active ta position pour voir les produits proches.</span>
-          <Button size="sm" variant="outline" onClick={() => request()}>
-            Activer ma position
+          <span>
+            Active ta position pour voir les produits proches. Ta position sert uniquement à trier
+            par distance. Elle n&apos;est pas enregistrée.
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => request()}
+            disabled={geoStatus === "asking"}
+          >
+            {geoStatus === "asking" ? "Localisation…" : "Activer ma position"}
           </Button>
         </Alert>
       ) : null}

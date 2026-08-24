@@ -48,6 +48,39 @@ describe("CategoryGrid", () => {
     expect(screen.queryByText("Alimentation")).not.toBeInTheDocument();
   });
 
+  // T64③ : chaque tuile catégorie doit être cliquable et pointer vers la
+  // page /produits pré-filtrée par cette catégorie (slug), pour corriger
+  // l'audit « tuiles catégories non cliquables » sur la landing.
+  it("links each tile to /produits?categorie=<slug>", async () => {
+    const categories: CategoryListItem[] = [
+      { id: "c1", nom: "Bricolage", slug: "bricolage", parentId: null },
+      { id: "c2", nom: "Beauté", slug: "beaute", parentId: null },
+    ];
+    listCategoriesCachedMock.mockResolvedValueOnce(categories);
+
+    await renderGrid();
+
+    expect(screen.getByText("Bricolage").closest("a")).toHaveAttribute(
+      "href",
+      "/produits?categorie=bricolage",
+    );
+    expect(screen.getByText("Beauté").closest("a")).toHaveAttribute(
+      "href",
+      "/produits?categorie=beaute",
+    );
+  });
+
+  it("links the fallback tiles too, when the API call fails", async () => {
+    listCategoriesCachedMock.mockRejectedValueOnce(new Error("network down"));
+
+    await renderGrid();
+
+    expect(screen.getByText("Alimentation").closest("a")).toHaveAttribute(
+      "href",
+      "/produits?categorie=alimentation",
+    );
+  });
+
   it("falls back to the static category list when the API call fails", async () => {
     listCategoriesCachedMock.mockRejectedValueOnce(new Error("network down"));
 

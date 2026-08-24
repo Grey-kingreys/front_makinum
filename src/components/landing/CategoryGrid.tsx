@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { listCategoriesCached } from "@/lib/categories/api";
 import type { CategoryListItem } from "@/lib/categories/types";
 
@@ -10,6 +12,11 @@ import type { CategoryListItem } from "@/lib/categories/types";
  * renvoie une liste vide. Le design de référence
  * (docs/Design de marketplace locale/Makinum.dc.html) n'a pas d'icônes
  * dédiées par catégorie — une seule pastille pour toutes, connues ou non.
+ *
+ * T64③ : chaque tuile est un lien vers /produits?categorie=<slug> — même
+ * pour les catégories de repli (`FALLBACK_CATEGORIES`, slugs alignés sur le
+ * seed) — ProduitsView valide le slug côté client contre GET /categories à
+ * l'arrivée et retombe sur « Tous » s'il est inconnu.
  */
 
 const FALLBACK_CATEGORIES: CategoryListItem[] = [
@@ -36,12 +43,14 @@ export async function CategoryGrid() {
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       {categories.map((category) => (
-        <li
-          key={category.id}
-          className="flex flex-col items-center gap-3 rounded-xl border border-border bg-white px-4 py-6 text-center"
-        >
-          <span className="h-9 w-9 rounded-full bg-tint-accent" aria-hidden="true" />
-          <span className="text-[14px] font-medium text-ink">{category.nom}</span>
+        <li key={category.id}>
+          <Link
+            href={`/produits?categorie=${encodeURIComponent(category.slug)}`}
+            className="flex flex-col items-center gap-3 rounded-xl border border-border bg-white px-4 py-6 text-center transition-colors hover:border-brand"
+          >
+            <span className="h-9 w-9 rounded-full bg-tint-accent" aria-hidden="true" />
+            <span className="text-[14px] font-medium text-ink">{category.nom}</span>
+          </Link>
         </li>
       ))}
     </ul>

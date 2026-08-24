@@ -18,12 +18,15 @@ function normalizeSpaces(value: string): string {
   return value.replace(/ /g, " ");
 }
 
-const { useSearchParamsMock } = vi.hoisted(() => ({
+const { useSearchParamsMock, pushMock } = vi.hoisted(() => ({
   useSearchParamsMock: vi.fn(() => new URLSearchParams()),
+  pushMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   useSearchParams: useSearchParamsMock,
+  // ProduitsView rend désormais SearchField (T64②), qui appelle useRouter().
+  useRouter: () => ({ push: pushMock }),
 }));
 
 function jsonResponse(body: unknown, init: { ok?: boolean; status?: number } = {}): Response {
@@ -89,25 +92,28 @@ function productsCallUrl(fetchMock: FetchMock): URL {
   return new URL(String(calls[calls.length - 1][0]));
 }
 
-function stubGeolocationSuccess(lat: number, lng: number) {
+/** Stub navigator.geolocation avec un espion sur getCurrentPosition, pour
+ * pouvoir affirmer QUAND (ou si) le navigateur a été sollicité (T64①). */
+function stubGeolocation(
+  behavior: (success: PositionCallback, error: PositionErrorCallback) => void,
+): ReturnType<typeof vi.fn> {
+  const getCurrentPosition = vi.fn(behavior);
   Object.defineProperty(window.navigator, "geolocation", {
     configurable: true,
-    value: {
-      getCurrentPosition: (success: PositionCallback) => {
-        success({ coords: { latitude: lat, longitude: lng } } as GeolocationPosition);
-      },
-    },
+    value: { getCurrentPosition },
+  });
+  return getCurrentPosition;
+}
+
+function stubGeolocationSuccess(lat: number, lng: number) {
+  return stubGeolocation((success) => {
+    success({ coords: { latitude: lat, longitude: lng } } as GeolocationPosition);
   });
 }
 
 function stubGeolocationDenied() {
-  Object.defineProperty(window.navigator, "geolocation", {
-    configurable: true,
-    value: {
-      getCurrentPosition: (_success: PositionCallback, error: PositionErrorCallback) => {
-        error({ code: 1, message: "denied" } as GeolocationPositionError);
-      },
-    },
+  return stubGeolocation((_success, error) => {
+    error({ code: 1, message: "denied" } as GeolocationPositionError);
   });
 }
 
@@ -123,6 +129,7 @@ describe("ProduitsView", () => {
   beforeEach(() => {
     window.sessionStorage.clear();
     useSearchParamsMock.mockReturnValue(new URLSearchParams());
+    pushMock.mockClear();
   });
 
   afterEach(() => {
@@ -143,8 +150,12 @@ describe("ProduitsView", () => {
     expect(url.searchParams.get("rayon")).toBe("25");
   });
 
-  it("falls back to tri=recent with no lat/lng/rayon when geolocation is denied, and shows the banner", async () => {
-    stubGeolocationDenied();
+  // T64① — la géoloc n'est plus jamais demandée automatiquement : au repos
+  // (idle, aucune position en sessionStorage), la page reste en tri=recent
+  // et affiche le bandeau d'invitation, sans qu'aucune popup navigateur
+  // n'ait été sollicitée.
+  it("stays on tri=recent with no lat/lng/rayon at rest (idle), and shows the invitation banner", async () => {
+    const getCurrentPosition = stubGeolocationSuccess(9.6412, -13.5784);
     const fetchMock = setupFetch({ categories: CATEGORIES, products: searchResult([]) });
 
     renderView();
@@ -157,7 +168,88 @@ describe("ProduitsView", () => {
     expect(url.searchParams.get("tri")).toBe("recent");
 
     expect(await screen.findByText(/Active ta position/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Plus proche" })).toBeDisabled();
+    // Jamais de demande de permission tant que rien n'a été cliqué (T64① —
+    // ce test échoue si l'ancien `if (geoStatus === "idle") request()` au
+    // montage est réintroduit).
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+  });
+
+  // La phrase d'explication (T64①) doit être visible AVANT le bouton, tant
+  // qu'aucune position n'est connue — un public non technicien doit
+  // comprendre pourquoi le navigateur va lui demander la permission avant
+  // que la popup n'apparaisse.
+  it("renders the explanation sentence before the 'Activer ma position' button", async () => {
+    setupFetch({ categories: CATEGORIES, products: searchResult([]) });
+
+    renderView();
+
+    const explanation = await screen.findByText(
+      /Ta position sert uniquement à trier par distance\. Elle n'est pas enregistrée\./i,
+    );
+    const button = screen.getByRole("button", { name: "Activer ma position" });
+    expect(explanation).toBeInTheDocument();
+
+    // La phrase précède le bouton dans le DOM (ordre de lecture).
+    const banner = button.closest("div");
+    expect(banner).not.toBeNull();
+    const html = banner!.innerHTML;
+    expect(html.indexOf("Ta position sert uniquement")).toBeGreaterThan(-1);
+    expect(html.indexOf("Ta position sert uniquement")).toBeLessThan(html.indexOf("Activer ma position"));
+  });
+
+  it("requests geolocation only when 'Activer ma position' is clicked, not before", async () => {
+    const getCurrentPosition = stubGeolocationSuccess(9.6412, -13.5784);
+    const fetchMock = setupFetch({ categories: CATEGORIES, products: searchResult([]) });
+    const user = userEvent.setup();
+
+    renderView();
+    const button = await screen.findByRole("button", { name: "Activer ma position" });
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+
+    await user.click(button);
+
+    expect(getCurrentPosition).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(productsCallUrl(fetchMock).searchParams.get("lat")).toBe("9.6412");
+    });
+    // Position acquise : le bandeau d'invitation disparaît.
+    expect(screen.queryByRole("button", { name: "Activer ma position" })).not.toBeInTheDocument();
+  });
+
+  it("requests geolocation when 'Plus proche' is clicked and no position is known yet, and applies tri=proche once granted", async () => {
+    const getCurrentPosition = stubGeolocationSuccess(9.6412, -13.5784);
+    const fetchMock = setupFetch({ categories: CATEGORIES, products: searchResult([]) });
+    const user = userEvent.setup();
+
+    renderView();
+    await waitFor(() => expect(productsCallUrl(fetchMock)).toBeDefined());
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Plus proche" }));
+
+    expect(getCurrentPosition).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      const url = productsCallUrl(fetchMock);
+      expect(url.searchParams.get("tri")).toBe("proche");
+      expect(url.searchParams.get("lat")).toBe("9.6412");
+    });
+  });
+
+  it("keeps tri=recent and the banner when geolocation is denied after clicking 'Activer ma position'", async () => {
+    const getCurrentPosition = stubGeolocationDenied();
+    const fetchMock = setupFetch({ categories: CATEGORIES, products: searchResult([]) });
+    const user = userEvent.setup();
+
+    renderView();
+    await user.click(await screen.findByRole("button", { name: "Activer ma position" }));
+
+    expect(getCurrentPosition).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      const url = productsCallUrl(fetchMock);
+      expect(url.searchParams.has("lat")).toBe(false);
+      expect(url.searchParams.get("tri")).toBe("recent");
+    });
+    expect(screen.getByRole("button", { name: "Activer ma position" })).toBeInTheDocument();
   });
 
   it("sends tri=prix_asc when 'Prix croissant' is selected, even without a position", async () => {
@@ -262,15 +354,91 @@ describe("ProduitsView", () => {
     expect(subtitle.textContent).not.toMatch(/^2 produits actifs dans un rayon de 25 km ·/);
   });
 
-  it("acquires the position automatically on mount when idle (no stored position)", async () => {
-    stubGeolocationSuccess(9.6412, -13.5784);
-    const fetchMock = setupFetch({ categories: [], products: searchResult([]) });
+  // T64② — recherche visible en tête de page (plus seulement dans le drawer
+  // sidebar) : même mécanique de debounce/navigation que SearchField.
+  describe("search field (T64②)", () => {
+    it("renders the search field with the expected placeholder", async () => {
+      setupFetch({ categories: [], products: searchResult([]) });
 
-    renderView();
+      renderView();
 
-    await waitFor(() => {
-      const url = productsCallUrl(fetchMock);
-      expect(url.searchParams.get("lat")).toBe("9.6412");
+      expect(await screen.findByPlaceholderText("Chercher un produit")).toBeInTheDocument();
+    });
+
+    it("reflects the current ?q= value on arrival", async () => {
+      useSearchParamsMock.mockReturnValue(new URLSearchParams("q=pagne"));
+      setupFetch({ categories: [], products: searchResult([]) });
+
+      renderView();
+
+      expect(await screen.findByPlaceholderText("Chercher un produit")).toHaveValue("pagne");
+    });
+
+    // Timers réels : `vi.useFakeTimers()` fait pendre le scheduler React
+    // (MessageChannel) combiné à `userEvent` — voir SearchField.test.tsx.
+    it("navigates to /produits?q=<value> after the debounce", async () => {
+      setupFetch({ categories: [], products: searchResult([]) });
+      const user = userEvent.setup();
+
+      renderView();
+      const input = screen.getByPlaceholderText("Chercher un produit");
+
+      await user.type(input, "riz");
+      expect(pushMock).not.toHaveBeenCalled();
+
+      await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/produits?q=riz"), {
+        timeout: 3000,
+      });
+    });
+  });
+
+  // T64③ — une tuile catégorie de la landing pointe vers
+  // /produits?categorie=<slug> ; ProduitsView doit lire ce param à l'arrivée
+  // pour pré-sélectionner le chip correspondant (et filtrer), avec repli sur
+  // « Tous » pour un slug absent ou inconnu.
+  describe("?categorie= param on arrival (T64③)", () => {
+    it("preselects the matching chip and filters by it for a known slug", async () => {
+      useSearchParamsMock.mockReturnValue(new URLSearchParams("categorie=electronique"));
+      const fetchMock = setupFetch({ categories: CATEGORIES, products: searchResult([]) });
+
+      renderView();
+
+      const chip = await screen.findByRole("button", { name: "Électronique" });
+      await waitFor(() => expect(chip).toHaveClass("border-brand", "bg-brand", "text-cream"));
+
+      const tousChip = screen.getByRole("button", { name: "Tous" });
+      expect(tousChip).not.toHaveClass("bg-brand");
+
+      await waitFor(() => {
+        expect(productsCallUrl(fetchMock).searchParams.get("categorie")).toBe("electronique");
+      });
+    });
+
+    it("falls back to 'Tous' for an unknown slug", async () => {
+      useSearchParamsMock.mockReturnValue(new URLSearchParams("categorie=inexistant"));
+      const fetchMock = setupFetch({ categories: CATEGORIES, products: searchResult([]) });
+
+      renderView();
+
+      await screen.findByRole("button", { name: "Électronique" });
+      const tousChip = screen.getByRole("button", { name: "Tous" });
+      await waitFor(() => expect(tousChip).toHaveClass("border-brand", "bg-brand", "text-cream"));
+
+      await waitFor(() => {
+        expect(productsCallUrl(fetchMock).searchParams.has("categorie")).toBe(false);
+      });
+    });
+
+    it("falls back to 'Tous' when the param is absent", async () => {
+      const fetchMock = setupFetch({ categories: CATEGORIES, products: searchResult([]) });
+
+      renderView();
+
+      const tousChip = await screen.findByRole("button", { name: "Tous" });
+      expect(tousChip).toHaveClass("border-brand", "bg-brand", "text-cream");
+      await waitFor(() => {
+        expect(productsCallUrl(fetchMock).searchParams.has("categorie")).toBe(false);
+      });
     });
   });
 });
