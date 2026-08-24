@@ -172,7 +172,11 @@ async function sendRequest<T>(
 }
 
 function toApiError(status: number, data: unknown): ApiError {
-  return new ApiError(status, extractErrorMessage(data, `Erreur ${status}`), extractErrorCode(data));
+  return new ApiError(
+    status,
+    extractErrorMessage(data, "Une erreur est survenue. Réessaie."),
+    extractErrorCode(data),
+  );
 }
 
 /**

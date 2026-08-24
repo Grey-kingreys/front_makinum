@@ -68,6 +68,9 @@ describe("AppShell", () => {
   beforeEach(() => {
     resetSession();
     window.sessionStorage.clear();
+    // T63 : remis à plat avant chaque test — un test qui pousse une query
+    // string (window.history.pushState) ne doit pas polluer les suivants.
+    window.history.pushState({}, "", "/");
     vi.stubGlobal("fetch", vi.fn());
     replaceMock.mockClear();
     pushMock.mockClear();
@@ -81,7 +84,7 @@ describe("AppShell", () => {
     resetSession();
   });
 
-  it("redirects to /connexion when no session is loaded on a protected route (/dashboard)", async () => {
+  it("redirects to /connexion?returnTo=<chemin encodé> when no session is loaded on a protected route (/dashboard) (T63)", async () => {
     usePathnameMock.mockReturnValue("/dashboard");
     const fetchMock = fetch as unknown as FetchMock;
     // POST /auth/refresh au montage : pas de cookie valide → visiteur anonyme.
@@ -94,11 +97,13 @@ describe("AppShell", () => {
 
     renderShell();
 
-    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/connexion"));
+    await waitFor(() =>
+      expect(replaceMock).toHaveBeenCalledWith("/connexion?returnTo=%2Fdashboard"),
+    );
     expect(screen.queryByText("contenu de la page")).not.toBeInTheDocument();
   });
 
-  it("redirects to /connexion when no session is loaded on /vendeur/catalogue (régression T51)", async () => {
+  it("redirects to /connexion?returnTo=<chemin encodé> when no session is loaded on /vendeur/catalogue (régression T51)", async () => {
     usePathnameMock.mockReturnValue("/vendeur/catalogue");
     const fetchMock = fetch as unknown as FetchMock;
     fetchMock.mockResolvedValue(
@@ -110,8 +115,32 @@ describe("AppShell", () => {
 
     renderShell();
 
-    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/connexion"));
+    await waitFor(() =>
+      expect(replaceMock).toHaveBeenCalledWith(
+        `/connexion?returnTo=${encodeURIComponent("/vendeur/catalogue")}`,
+      ),
+    );
     expect(screen.queryByText("contenu de la page")).not.toBeInTheDocument();
+  });
+
+  it("includes the current query string in returnTo (T63)", async () => {
+    usePathnameMock.mockReturnValue("/dashboard");
+    window.history.pushState({}, "", "/dashboard?tab=ventes");
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { code: "INVALID_REFRESH_TOKEN", message: "Session expirée" },
+        { ok: false, status: 401 },
+      ),
+    );
+
+    renderShell();
+
+    await waitFor(() =>
+      expect(replaceMock).toHaveBeenCalledWith(
+        `/connexion?returnTo=${encodeURIComponent("/dashboard?tab=ventes")}`,
+      ),
+    );
   });
 
   it("renders /produits for an anonymous visitor without redirecting, visitor sidebar shown (T51)", async () => {

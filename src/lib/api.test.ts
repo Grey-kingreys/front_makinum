@@ -116,6 +116,16 @@ describe("apiFetch", () => {
     });
   });
 
+  it("falls back to a generic French message when the API response carries no exploitable message (T63)", async () => {
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockResolvedValueOnce(jsonResponse({}, { ok: false, status: 500 }));
+
+    await expect(apiFetch("/ping")).rejects.toMatchObject({
+      status: 500,
+      message: "Une erreur est survenue. Réessaie.",
+    });
+  });
+
   it("surfaces PHONE_NOT_VERIFIED / ACCOUNT_SUSPENDED style backend errors", async () => {
     const fetchMock = fetch as unknown as FetchMock;
     fetchMock.mockResolvedValueOnce(

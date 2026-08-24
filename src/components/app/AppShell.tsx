@@ -76,9 +76,17 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user && !publicPath) {
-      router.replace("/connexion");
+      // T63 : ramène l'utilisateur sur la page qu'il consultait une fois
+      // connecté — `window.location.search` plutôt que `useSearchParams()`
+      // (lu uniquement ici, dans l'effet, jamais pendant le rendu : pas de
+      // bascule en rendu client forcé pour toute la coquille, qui casserait
+      // le HTML public servi sur les routes T51/T54). La garde `returnTo`
+      // côté /connexion (src/lib/auth/return-to.ts, T51) valide la valeur au
+      // retour ; pas besoin de la revalider ici.
+      const cheminCourant = pathname + window.location.search;
+      router.replace(`/connexion?returnTo=${encodeURIComponent(cheminCourant)}`);
     }
-  }, [loading, user, publicPath, router]);
+  }, [loading, user, publicPath, pathname, router]);
 
   function handleLogout() {
     logout();
