@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { useAuth } from "@/lib/auth";
 import type { Role } from "@/lib/auth/types";
 import { listAdminUsers } from "@/lib/admin";
@@ -275,6 +276,8 @@ export function DashboardView() {
 
   return (
     <div className="mx-auto max-w-[1280px] px-6 pb-[60px] pt-[28px] sm:px-8 lg:px-10">
+      <InstallPrompt />
+
       <div className="mb-7 flex flex-wrap items-center gap-3">
         <h1 className="font-display text-[27px] font-bold tracking-tight text-ink sm:text-[33px]">
           Bonjour, {user.nom}

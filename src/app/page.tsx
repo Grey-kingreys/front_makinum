@@ -4,6 +4,7 @@ import { CategoryGrid } from "@/components/landing/CategoryGrid";
 import { FeaturedProducts } from "@/components/landing/FeaturedProducts";
 import { HeroVisual } from "@/components/landing/HeroVisual";
 import { LandingHeader } from "@/components/landing/LandingHeader";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 
 /**
  * Landing publique de Makinum — reproduit l'écran « isLanding » du
@@ -44,6 +45,7 @@ export default function Home() {
   return (
     <>
       <LandingHeader />
+      <InstallPrompt />
 
       <main>
         <section aria-labelledby="hero-heading" className="bg-brand px-6 py-16 text-cream sm:px-8 lg:px-12 lg:py-24">

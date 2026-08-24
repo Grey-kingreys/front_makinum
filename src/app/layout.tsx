@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Instrument_Sans } from "next/font/google";
 
 import { AuthProvider } from "@/lib/auth";
+import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
 import { DEFAULT_OG_IMAGE_PATH, DEFAULT_OG_IMAGE_SIZE, getSiteUrl } from "@/lib/seo/config";
 
 import "./globals.css";
@@ -79,6 +80,7 @@ export default function RootLayout({
       className={`${bricolageGrotesque.variable} ${instrumentSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <ServiceWorkerRegistration />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
