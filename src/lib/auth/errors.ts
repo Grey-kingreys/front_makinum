@@ -66,3 +66,47 @@ export function describeDevenirVendeurFormError(
   }
   return { field: null, message: fallback };
 }
+
+/** Champ du formulaire « Mon compte » (T68b) visé par une erreur `PATCH /auth/me`. */
+export type UpdateMeFormField = "telephone" | "motDePasseActuel";
+
+export interface UpdateMeFormError {
+  /** `null` : erreur générale (ex. NO_FIELDS_TO_UPDATE, ne devrait jamais se produire depuis l'UI). */
+  field: UpdateMeFormField | null;
+  message: string;
+}
+
+/**
+ * Mappe une erreur `PATCH /auth/me` (T68a) sur le champ concerné du
+ * formulaire « Mon compte » — même convention que
+ * describeDevenirVendeurFormError ci-dessus : le formulaire reste ouvert
+ * pour permettre de corriger la saisie plutôt que de rediriger vers un
+ * message d'erreur générique.
+ */
+export function describeUpdateMeFormError(
+  error: unknown,
+  fallback = "Une erreur est survenue. Réessaie.",
+): UpdateMeFormError {
+  if (error instanceof ApiError) {
+    switch (error.code) {
+      case "PHONE_ALREADY_USED":
+        return {
+          field: "telephone",
+          message: "Ce numéro de téléphone est déjà utilisé par un autre compte.",
+        };
+      case "INVALID_PHONE":
+        return { field: "telephone", message: "Numéro de téléphone invalide." };
+      case "VENDOR_PHONE_REQUIRED":
+        return {
+          field: "telephone",
+          message:
+            "Un numéro de téléphone est obligatoire pour un compte vendeur : c'est ton canal de contact avec les acheteurs.",
+        };
+      case "INVALID_CURRENT_PASSWORD":
+        return { field: "motDePasseActuel", message: "Mot de passe actuel incorrect." };
+      default:
+        return { field: null, message: error.message || fallback };
+    }
+  }
+  return { field: null, message: fallback };
+}

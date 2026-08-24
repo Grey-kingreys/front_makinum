@@ -31,6 +31,8 @@ import { SearchField } from "./SearchField";
  * « Paramètres » (/vendeur/parametres, T52b, dernier de la section).
  * ADMIN : « File de modération » (/admin/moderation), « Utilisateurs »
  * (/admin/vendeurs) et « Catégories » (/admin/categories, T31b).
+ * Bloc profil du bas (tous rôles connectés) : entrée « Mon compte »
+ * (/compte, T68b) juste au-dessus de « Se déconnecter ».
  * La cloche de notifications (NotificationBell, /notifications) est dans la
  * rangée d'en-tête, visible aussi bien repliée (barre mobile) que dépliée
  * (sidebar desktop).
@@ -178,7 +180,15 @@ function VisitorNav({ onNavigate }: { onNavigate: () => void }) {
   );
 }
 
-function AuthenticatedFooter({ user, onLogout }: { user: PublicUser; onLogout?: () => void }) {
+function AuthenticatedFooter({
+  user,
+  onLogout,
+  onNavigate,
+}: {
+  user: PublicUser;
+  onLogout?: () => void;
+  onNavigate: () => void;
+}) {
   const { status: geoStatus } = useGeo();
 
   return (
@@ -199,6 +209,17 @@ function AuthenticatedFooter({ user, onLogout }: { user: PublicUser; onLogout?: 
           <div className="truncate text-[12px] text-cream/50">{user.telephone ?? user.email}</div>
         </div>
       </div>
+
+      {/* T68b : entrée « Mon compte », tous rôles — juste au-dessus de « Se
+          déconnecter », même traitement visuel (lien plutôt que bouton, seule
+          différence : la navigation plutôt qu'une action). */}
+      <Link
+        href="/compte"
+        onClick={onNavigate}
+        className="rounded-[9px] px-[10px] py-2 text-left text-[13.5px] text-cream/62 transition-colors hover:bg-cream/8 hover:text-cream"
+      >
+        Mon compte
+      </Link>
 
       <button
         type="button"
@@ -290,7 +311,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
         )}
       >
         {user ? (
-          <AuthenticatedFooter user={user} onLogout={onLogout} />
+          <AuthenticatedFooter user={user} onLogout={onLogout} onNavigate={closeMobileNav} />
         ) : (
           <VisitorFooter returnTo={pathname ?? "/produits"} />
         )}

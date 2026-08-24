@@ -24,6 +24,16 @@ export interface AuthContextValue {
   login: (identifiant: string, motDePasse: string) => Promise<PublicUser>;
   logout: () => void;
   refresh: () => Promise<void>;
+  /**
+   * Adopte directement un `PublicUser` déjà obtenu par l'appelant (T68b,
+   * `PATCH /auth/me`) sans repasser par un appel réseau — évite le
+   * aller-retour `refresh()` quand la réponse de la mutation porte déjà le
+   * profil à jour (même donnée). `accessToken` optionnel : seul le
+   * changement de mot de passe en renvoie un (nouvelle session ouverte,
+   * toutes les autres révoquées côté serveur) ; l'omettre laisse le jeton en
+   * mémoire inchangé.
+   */
+  applyUpdatedUser: (user: PublicUser, accessToken?: string) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -86,6 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return loggedInUser;
   }, []);
 
+  const applyUpdatedUser = useCallback((updatedUser: PublicUser, accessToken?: string) => {
+    if (accessToken) setAccessToken(accessToken);
+    setUser(updatedUser);
+  }, []);
+
   const logout = useCallback(() => {
     // Révocation serveur (efface le cookie de rafraîchissement) lancée avec
     // le jeton encore en mémoire — `apiFetch` compose ses en-têtes de façon
@@ -97,8 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, loading, login, logout, refresh }),
-    [user, loading, login, logout, refresh],
+    () => ({ user, loading, login, logout, refresh, applyUpdatedUser }),
+    [user, loading, login, logout, refresh, applyUpdatedUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

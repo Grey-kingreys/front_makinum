@@ -53,3 +53,32 @@ export interface LoginResponse {
   accessToken: string;
   user: PublicUser;
 }
+
+/** Changement de mot de passe sur `PATCH /auth/me` (T68a/T68b). */
+export interface ChangePasswordInput {
+  actuel: string;
+  nouveau: string;
+}
+
+/**
+ * Corps de `PATCH /auth/me` (T68a) — modification libre-service du compte.
+ * Tous les champs sont optionnels indépendamment côté backend, mais au moins
+ * un est requis par appel (sinon 400 `NO_FIELDS_TO_UPDATE`). `telephone:
+ * null` retire le numéro (distinct d'un champ absent) ; `undefined` laisse
+ * le numéro inchangé. Email volontairement absent : non modifiable en V1.
+ */
+export interface UpdateMeInput {
+  nom?: string;
+  telephone?: string | null;
+  motDePasse?: ChangePasswordInput;
+}
+
+/**
+ * Réponse de `PATCH /auth/me` — `accessToken` n'apparaît que lorsque le mot
+ * de passe a été changé (nouvelle session ouverte, toutes les autres
+ * révoquées) ; absent pour toute autre modification (nom/téléphone seuls).
+ */
+export interface UpdateMeResponse {
+  user: PublicUser;
+  accessToken?: string;
+}

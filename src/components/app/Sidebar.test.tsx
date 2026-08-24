@@ -198,6 +198,15 @@ describe("Sidebar", () => {
     expect(link.textContent).toBe("Ma demande");
   });
 
+  it.each(["ACHETEUR", "VENDEUR", "ADMIN"] as const)(
+    "shows a « Mon compte » link to /compte in the footer for role %s (T68b)",
+    async (role) => {
+      await renderSidebar(makeUser({ role }));
+
+      expect(screen.getByRole("link", { name: "Mon compte" })).toHaveAttribute("href", "/compte");
+    },
+  );
+
   it("falls back to the email in the user card when telephone is null", async () => {
     await renderSidebar(
       makeUser({ telephone: null, telephoneVerifie: false, email: "fatoumata@exemple.gn", emailVerifie: true }),
@@ -270,6 +279,7 @@ describe("Sidebar — visiteur (user === null, T51)", () => {
     expect(signupCta).toHaveAttribute("href", "/inscription?returnTo=%2Fproduits%2Fp1");
 
     expect(screen.queryByText("Se déconnecter")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mon compte")).not.toBeInTheDocument();
     expect(screen.queryByText("Fatoumata Bangoura")).not.toBeInTheDocument();
   });
 

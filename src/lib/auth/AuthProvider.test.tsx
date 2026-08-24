@@ -44,7 +44,7 @@ const DEMO_USER: PublicUser = {
 };
 
 function Harness() {
-  const { user, loading, login, logout, refresh } = useAuth();
+  const { user, loading, login, logout, refresh, applyUpdatedUser } = useAuth();
   return (
     <div>
       <span data-testid="loading">{String(loading)}</span>
@@ -52,6 +52,16 @@ function Harness() {
       <button onClick={() => void login("+224622000000", "secret")}>login</button>
       <button onClick={() => logout()}>logout</button>
       <button onClick={() => void refresh()}>me</button>
+      <button onClick={() => applyUpdatedUser({ ...DEMO_USER, nom: "Nom Mis À Jour" })}>
+        apply-no-token
+      </button>
+      <button
+        onClick={() =>
+          applyUpdatedUser({ ...DEMO_USER, nom: "Nom Mis À Jour" }, "updated-access-token")
+        }
+      >
+        apply-with-token
+      </button>
     </div>
   );
 }
@@ -211,5 +221,42 @@ describe("AuthProvider", () => {
     await waitFor(() => expect(screen.getByTestId("user")).toHaveTextContent("none"));
     expect(getAccessToken()).toBeNull();
     expect(refreshCalls).toBe(2);
+  });
+
+  it("applyUpdatedUser() adopte le user sans toucher au jeton d'accès quand aucun n'est fourni (T68b)", async () => {
+    const user = userEvent.setup();
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockImplementation(async (url: unknown) =>
+      pathOf(url) === "/auth/login"
+        ? jsonResponse({ accessToken: "fresh-token", user: DEMO_USER })
+        : unauthorized(),
+    );
+
+    renderHarness();
+    await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
+    await user.click(screen.getByText("login"));
+    await waitFor(() => expect(screen.getByTestId("user")).toHaveTextContent(DEMO_USER.nom));
+    const callsBeforeApply = fetchMock.mock.calls.length;
+
+    await user.click(screen.getByText("apply-no-token"));
+
+    expect(screen.getByTestId("user")).toHaveTextContent("Nom Mis À Jour");
+    // Aucun appel réseau déclenché par applyUpdatedUser lui-même.
+    expect(fetchMock.mock.calls.length).toBe(callsBeforeApply);
+    expect(getAccessToken()).toBe("fresh-token");
+  });
+
+  it("applyUpdatedUser() adopte le nouveau jeton d'accès quand il est fourni (changement de mot de passe, T68b)", async () => {
+    const user = userEvent.setup();
+    const fetchMock = fetch as unknown as FetchMock;
+    fetchMock.mockResolvedValue(unauthorized());
+
+    renderHarness();
+    await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
+
+    await user.click(screen.getByText("apply-with-token"));
+
+    expect(screen.getByTestId("user")).toHaveTextContent("Nom Mis À Jour");
+    expect(getAccessToken()).toBe("updated-access-token");
   });
 });

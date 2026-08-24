@@ -7,12 +7,26 @@ export {
   resetSession,
   setAccessToken,
 } from "./session";
-export type { LoginResponse, PublicUser, Role, StatutCompte, StatutVendeur } from "./types";
+export type {
+  ChangePasswordInput,
+  LoginResponse,
+  PublicUser,
+  Role,
+  StatutCompte,
+  StatutVendeur,
+  UpdateMeInput,
+  UpdateMeResponse,
+} from "./types";
 
-export { devenirVendeur } from "./api";
+export { devenirVendeur, updateMe } from "./api";
 
-export { describeDevenirVendeurError, describeDevenirVendeurFormError } from "./errors";
+export {
+  describeDevenirVendeurError,
+  describeDevenirVendeurFormError,
+  describeUpdateMeFormError,
+} from "./errors";
 export type { DevenirVendeurFormError, DevenirVendeurFormField } from "./errors";
+export type { UpdateMeFormError, UpdateMeFormField } from "./errors";
 
 export {
   RETURN_TO_PARAM,
