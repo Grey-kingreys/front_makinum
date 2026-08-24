@@ -12,7 +12,7 @@ vi.mock("@/lib/vendors/api", () => ({ listVendors: listVendorsMock }));
 
 const ORIGINAL_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
 const SITE_URL = "https://makinum.kingreys.fr";
-const STATIC_PATHS = ["/", "/produits", "/vendeurs", "/cgu", "/confidentialite"];
+const STATIC_PATHS = ["/", "/produits", "/vendeurs", "/aide", "/cgu", "/confidentialite"];
 
 function page(items: Array<{ id: string }>, total: number) {
   return { items, total, page: 1, limit: 50 };

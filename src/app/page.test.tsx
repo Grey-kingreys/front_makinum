@@ -77,9 +77,10 @@ describe("Landing page", () => {
     expect(screen.getByRole("link", { name: "Devenir vendeur" })).toHaveAttribute("href", "/inscription");
   });
 
-  it("links the footer legal notices to /cgu and /confidentialite", () => {
+  it("links the footer legal notices to /aide, /cgu and /confidentialite", () => {
     renderPage();
 
+    expect(screen.getByRole("link", { name: "Aide" })).toHaveAttribute("href", "/aide");
     expect(screen.getByRole("link", { name: "CGU" })).toHaveAttribute("href", "/cgu");
     expect(screen.getByRole("link", { name: "Confidentialité" })).toHaveAttribute("href", "/confidentialite");
   });

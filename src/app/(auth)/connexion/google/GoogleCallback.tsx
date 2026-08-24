@@ -35,7 +35,7 @@ const ERROR_MESSAGES: Record<ErrorCode, ErrorInfo> = {
   // Même formulation que /connexion pour ACCOUNT_SUSPENDED (voir ConnexionForm).
   compte_suspendu: {
     variant: "danger",
-    message: "Ce compte est suspendu. Contacte l'équipe Makinum pour plus d'informations.",
+    message: "Ce compte est suspendu. Contacte l'équipe Makinum depuis la page Aide.",
   },
   google: {
     variant: "danger",

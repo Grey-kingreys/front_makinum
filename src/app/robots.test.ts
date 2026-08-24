@@ -17,7 +17,7 @@ describe("robots", () => {
     const result = robots();
     const rules = Array.isArray(result.rules) ? result.rules[0] : result.rules;
 
-    expect(rules.allow).toEqual(["/", "/produits", "/vendeurs", "/cgu", "/confidentialite"]);
+    expect(rules.allow).toEqual(["/", "/produits", "/vendeurs", "/aide", "/cgu", "/confidentialite"]);
   });
 
   it("disallows every path that requires a session", () => {

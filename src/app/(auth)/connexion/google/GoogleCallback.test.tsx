@@ -101,7 +101,7 @@ describe("GoogleCallback", () => {
     render(<GoogleCallback />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Ce compte est suspendu. Contacte l'équipe Makinum pour plus d'informations.",
+      "Ce compte est suspendu. Contacte l'équipe Makinum depuis la page Aide.",
     );
     expect(refreshSessionMock).not.toHaveBeenCalled();
   });

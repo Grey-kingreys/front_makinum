@@ -15,7 +15,7 @@ const PAGE_LIMIT = 50;
  */
 const MAX_PAGES = 200;
 
-const STATIC_PATHS = ["/", "/produits", "/vendeurs", "/cgu", "/confidentialite"];
+const STATIC_PATHS = ["/", "/produits", "/vendeurs", "/aide", "/cgu", "/confidentialite"];
 
 /**
  * Sans ça, `sitemap.xml` est un Route Handler mis en cache "à vie" (jusqu'au

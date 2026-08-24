@@ -30,7 +30,7 @@ function describeLoginError(error: unknown): LoginErrorInfo {
         };
       case "ACCOUNT_SUSPENDED":
         return {
-          message: "Ce compte est suspendu. Contacte l'équipe Makinum pour plus d'informations.",
+          message: "Ce compte est suspendu. Contacte l'équipe Makinum depuis la page Aide.",
           showVerifyLink: false,
         };
       case "RATE_LIMITED":

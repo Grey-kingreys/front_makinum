@@ -203,6 +203,9 @@ export default function Home() {
         <div className="mx-auto flex max-w-[1240px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p>Makinum — plateforme de mise en relation. Facilitatrice, jamais intermédiaire financier.</p>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Link href="/aide" className="text-cream/55 transition-colors hover:text-cream">
+              Aide
+            </Link>
             <Link href="/cgu" className="text-cream/55 transition-colors hover:text-cream">
               CGU
             </Link>

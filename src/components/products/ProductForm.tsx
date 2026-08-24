@@ -262,7 +262,7 @@ export function ProductForm({
         </label>
         {noCategoriesAvailable ? (
           <Alert variant="danger">
-            Aucune catégorie disponible — contacte l&apos;administrateur.
+            Aucune catégorie disponible pour l&apos;instant — contacte l&apos;équipe Makinum depuis la page Aide.
           </Alert>
         ) : (
           <>

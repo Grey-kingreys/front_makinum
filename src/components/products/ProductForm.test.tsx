@@ -159,7 +159,7 @@ describe("ProductForm", () => {
     renderForm({ categories: [], onSubmit });
 
     expect(
-      screen.getByText("Aucune catégorie disponible — contacte l'administrateur."),
+      screen.getByText("Aucune catégorie disponible pour l'instant — contacte l'équipe Makinum depuis la page Aide."),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("Catégorie")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Publier le produit" })).toBeDisabled();
