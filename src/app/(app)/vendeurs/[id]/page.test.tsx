@@ -130,11 +130,14 @@ describe("generateMetadata (VendeurPage)", () => {
 
     const metadata = await generateMetadata({ params: Promise.resolve({ id: "v1" }) });
 
-    expect(metadata.title).toBe("Fatoumata Bangoura");
+    expect(metadata.title).toBe("Fatoumata Bangoura — vendeur à Conakry");
     expect(metadata.description).toContain("5 produits actifs");
     expect(metadata.description).toContain("4.6/5");
     expect(metadata.alternates).toMatchObject({ canonical: "/vendeurs/v1" });
-    expect(metadata.openGraph).toMatchObject({ type: "website", title: "Fatoumata Bangoura" });
+    expect(metadata.openGraph).toMatchObject({
+      type: "website",
+      title: "Fatoumata Bangoura — vendeur à Conakry",
+    });
   });
 
   it("describes activity without a rating when the vendor has no review", async () => {

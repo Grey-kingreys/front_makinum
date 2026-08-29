@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ApiError } from "@/lib/api";
+import { formatPrixGNF } from "@/lib/format";
 import { getProduct } from "@/lib/products/api";
 import type { ProductView } from "@/lib/products/types";
 import { DEFAULT_OG_IMAGE_PATH, getSiteUrl } from "@/lib/seo/config";
@@ -26,8 +27,32 @@ const NOT_FOUND_METADATA: Metadata = {
 };
 
 /**
- * `generateMetadata` (T53) : titre = titre produit, description dérivée de
- * la description produit (tronquée ~160 caractères, cf. src/lib/seo/text.ts),
+ * Titre keyword-riche (T71) : le prix (en GNF) et « Conakry » apparaissent
+ * dans le `<title>` — c'est ce que Google affiche et compare à une requête
+ * du type « prix de X en Guinée ». Le template du layout racine (`%s · Makinum`)
+ * ajoute la marque automatiquement.
+ */
+function buildProductTitle(product: ProductView): string {
+  return `${product.titre} — ${formatPrixGNF(product.prix)} à Conakry`;
+}
+
+/**
+ * Description keyword-riche (T71) : commence par le prix (repris tel quel par
+ * Google dans le snippet), puis la description produit, puis le vendeur et la
+ * mention « paiement à la livraison » — ce dernier segment n'apparaît que si
+ * `truncateDescription` (~160 caractères) ne l'a pas déjà coupé.
+ */
+function buildProductDescription(product: ProductView): string {
+  const raw =
+    `Prix : ${formatPrixGNF(product.prix)} à Conakry. ${product.description} ` +
+    `Vendu par ${product.vendeur.nom}, paiement à la livraison.`;
+  return truncateDescription(raw);
+}
+
+/**
+ * `generateMetadata` (T53, titre/description enrichis en T71) : titre =
+ * titre produit + prix + « Conakry », description dérivée du prix puis de la
+ * description produit (tronquée ~160 caractères, cf. src/lib/seo/text.ts),
  * image OG = première photo si elle existe (les URLs backend sont déjà
  * absolues — pas besoin de les recomposer avec metadataBase), sinon repli sur
  * l'image par défaut du site. Même contrat d'erreur que la page : un 404
@@ -46,24 +71,25 @@ export async function generateMetadata({ params }: ProduitPageProps): Promise<Me
     throw error;
   }
 
-  const description = truncateDescription(product.description);
+  const title = buildProductTitle(product);
+  const description = buildProductDescription(product);
   const canonical = `/produits/${id}`;
   const image = product.photos[0]?.url ?? DEFAULT_OG_IMAGE_PATH;
 
   return {
-    title: product.titre,
+    title,
     description,
     alternates: { canonical },
     openGraph: {
       type: "website",
-      title: product.titre,
+      title,
       description,
       url: canonical,
       images: [{ url: image, alt: product.titre }],
     },
     twitter: {
       card: "summary_large_image",
-      title: product.titre,
+      title,
       description,
       images: [image],
     },

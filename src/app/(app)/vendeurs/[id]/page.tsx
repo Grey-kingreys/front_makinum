@@ -32,11 +32,13 @@ function describeActivite(vendor: VendorDetailData): string {
 }
 
 /**
- * `generateMetadata` (T53) : titre = nom du vendeur, description dérivée de
- * son activité (nb de produits actifs, note si elle existe — cf.
- * describeActivite), canonique. Pas de photo de vendeur dans le contrat API
- * (VendorDetail) : l'image OG retombe sur l'image par défaut du site plutôt
- * que d'en fabriquer une. Même contrat 404 que ProduitPage.
+ * `generateMetadata` (T53, titre enrichi en T71) : titre = nom du vendeur +
+ * « vendeur à Conakry » (le template du layout racine ajoute la marque),
+ * description dérivée de son activité (nb de produits actifs, note si elle
+ * existe — cf. describeActivite, déjà « Conakry »-aware), canonique. Pas de
+ * photo de vendeur dans le contrat API (VendorDetail) : l'image OG retombe
+ * sur l'image par défaut du site plutôt que d'en fabriquer une. Même contrat
+ * 404 que ProduitPage.
  */
 export async function generateMetadata({ params }: VendeurPageProps): Promise<Metadata> {
   const { id } = await params;
@@ -51,23 +53,24 @@ export async function generateMetadata({ params }: VendeurPageProps): Promise<Me
     throw error;
   }
 
+  const title = `${vendor.nom} — vendeur à Conakry`;
   const description = truncateDescription(describeActivite(vendor));
   const canonical = `/vendeurs/${id}`;
 
   return {
-    title: vendor.nom,
+    title,
     description,
     alternates: { canonical },
     openGraph: {
       type: "website",
-      title: vendor.nom,
+      title,
       description,
       url: canonical,
       images: [{ url: DEFAULT_OG_IMAGE_PATH, alt: "Makinum" }],
     },
     twitter: {
       card: "summary_large_image",
-      title: vendor.nom,
+      title,
       description,
       images: [DEFAULT_OG_IMAGE_PATH],
     },

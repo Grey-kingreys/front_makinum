@@ -84,4 +84,47 @@ describe("Landing page", () => {
     expect(screen.getByRole("link", { name: "CGU" })).toHaveAttribute("href", "/cgu");
     expect(screen.getByRole("link", { name: "Confidentialité" })).toHaveAttribute("href", "/confidentialite");
   });
+
+  // T71 : JSON-LD WebSite (avec SearchAction, pour le sitelink de recherche
+  // Google) + Organization, injectés en <script type="application/ld+json">
+  // sur la landing.
+  it("renders a JSON-LD WebSite script with a SearchAction targeting /produits?q=", () => {
+    const { container } = renderPage();
+
+    const scripts = container.querySelectorAll('script[type="application/ld+json"]');
+    const website = Array.from(scripts)
+      .map((script) => JSON.parse(script.textContent ?? "{}"))
+      .find((data) => data["@type"] === "WebSite");
+
+    expect(website).toBeDefined();
+    expect(website).toMatchObject({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Makinum",
+      url: "http://localhost:3000",
+      potentialAction: {
+        "@type": "SearchAction",
+        target: "http://localhost:3000/produits?q={search_term_string}",
+        "query-input": "required name=search_term_string",
+      },
+    });
+  });
+
+  it("renders a JSON-LD Organization script", () => {
+    const { container } = renderPage();
+
+    const scripts = container.querySelectorAll('script[type="application/ld+json"]');
+    const organization = Array.from(scripts)
+      .map((script) => JSON.parse(script.textContent ?? "{}"))
+      .find((data) => data["@type"] === "Organization");
+
+    expect(organization).toBeDefined();
+    expect(organization).toMatchObject({
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "Makinum",
+      url: "http://localhost:3000",
+      logo: "http://localhost:3000/icons/icon-512.png",
+    });
+  });
 });

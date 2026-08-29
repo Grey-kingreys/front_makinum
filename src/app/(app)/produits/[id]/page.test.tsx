@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api";
+import { formatPrixGNF } from "@/lib/format";
 import { GeoProvider } from "@/lib/geo";
 import type { ProductView } from "@/lib/products/types";
 
@@ -148,14 +149,22 @@ describe("generateMetadata (ProduitPage)", () => {
     });
 
     const metadata = await generateMetadata({ params: Promise.resolve({ id: "p1" }) });
+    const prix = formatPrixGNF("185000");
+    // `truncateDescription` normalise tous les espaces (y compris l'espace
+    // fine insécable   que `formatPrixGNF` met entre les milliers) en
+    // espace normal — contrairement au title, qui garde `prix` tel quel.
+    const prixDansDescription = prix.replace(/\s/g, " ");
 
-    expect(metadata.title).toBe("Pagne wax 6 yards");
+    expect(metadata.title).toBe(`Pagne wax 6 yards — ${prix} à Conakry`);
     expect(typeof metadata.description).toBe("string");
+    expect(metadata.description as string).toMatch(
+      new RegExp(`^Prix : ${prixDansDescription} à Conakry\\.`),
+    );
     expect((metadata.description as string).length).toBeLessThanOrEqual(161);
     expect(metadata.alternates).toMatchObject({ canonical: "/produits/p1" });
     expect(metadata.openGraph).toMatchObject({
       type: "website",
-      title: "Pagne wax 6 yards",
+      title: `Pagne wax 6 yards — ${prix} à Conakry`,
       url: "/produits/p1",
     });
     expect(metadata.openGraph?.images).toEqual([

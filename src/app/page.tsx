@@ -4,6 +4,8 @@ import { CategoryGrid } from "@/components/landing/CategoryGrid";
 import { FeaturedProducts } from "@/components/landing/FeaturedProducts";
 import { HeroVisual } from "@/components/landing/HeroVisual";
 import { LandingHeader } from "@/components/landing/LandingHeader";
+import { DEFAULT_OG_IMAGE_PATH, getSiteUrl } from "@/lib/seo/config";
+import { JsonLd } from "@/lib/seo/json-ld";
 
 /**
  * Landing publique de Makinum — reproduit l'écran « isLanding » du
@@ -15,6 +17,46 @@ import { LandingHeader } from "@/components/landing/LandingHeader";
  * et CategoryGrid font chacun leur propre fetch server-side vers l'API
  * publique.
  */
+
+/**
+ * JSON-LD `WebSite` + `Organization` (schema.org, T71) — deux blocs distincts
+ * plutôt qu'un objet `@graph` unique, pour rester dans le même style que les
+ * fiches produit/vendeur (un `<script>` par entité). Le `SearchAction` sur
+ * `WebSite` cible `/produits?q=` : ce paramètre `q` est réellement lu par la
+ * page /produits (T64) — Google peut donc proposer une recherche sitelink
+ * directement dans les résultats. `JsonLd` (src/lib/seo/json-ld.tsx) échappe
+ * le JSON avant injection.
+ */
+function SiteJsonLd() {
+  const siteUrl = getSiteUrl();
+
+  const website = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Makinum",
+    url: siteUrl,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${siteUrl}/produits?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  };
+
+  const organization = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Makinum",
+    url: siteUrl,
+    logo: `${siteUrl}${DEFAULT_OG_IMAGE_PATH}`,
+  };
+
+  return (
+    <>
+      <JsonLd data={website} />
+      <JsonLd data={organization} />
+    </>
+  );
+}
 
 const ACCENT_BUTTON =
   "inline-flex items-center justify-center rounded-lg bg-accent px-7 py-4 text-[15.5px] font-semibold text-brand transition-colors hover:bg-accent-hover";
@@ -43,6 +85,7 @@ const HOW_IT_WORKS = [
 export default function Home() {
   return (
     <>
+      <SiteJsonLd />
       <LandingHeader />
 
       <main>

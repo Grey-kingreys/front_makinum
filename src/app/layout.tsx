@@ -7,9 +7,14 @@ import { DEFAULT_OG_IMAGE_PATH, DEFAULT_OG_IMAGE_SIZE, getSiteUrl } from "@/lib/
 
 import "./globals.css";
 
-const SITE_TITLE = "Makinum — ce qui se vend près de chez toi";
+// T71 : titre/description enrichis pour le SEO local — « Conakry, Guinée »,
+// « achat et vente en ligne » et les notions clés (prix en GNF, contact
+// direct vendeur, paiement à la livraison) doivent apparaître dès la landing
+// pour qu'une recherche « site de vente en ligne en Guinée » remonte Makinum.
+const SITE_TITLE = "Makinum — achat et vente en ligne à Conakry, Guinée";
 const SITE_DESCRIPTION =
-  "Makinum met en relation acheteurs et vendeurs de ton quartier à Conakry. Sans intermédiaire, paiement à la livraison.";
+  "Makinum est le site d'achat et vente en ligne local en Guinée : trouve des produits près de " +
+  "chez toi à Conakry, vois le prix en GNF, contacte directement le vendeur et paie à la livraison.";
 
 const bricolageGrotesque = Bricolage_Grotesque({
   variable: "--font-bricolage",
