@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Star } from "lucide-react";
 
 import { Alert, Button } from "@/components/ui";
 import { VendeurBadge } from "@/components/products/VendeurBadge";
@@ -33,8 +34,9 @@ function VendorCard({ vendor }: { vendor: VendorListItem }) {
       </div>
       <div className="text-[13px] text-brand-faint">
         {vendor.noteMoyenne !== null ? (
-          <span>
-            ★ {vendor.noteMoyenne} ({vendor.nbAvis})
+          <span className="inline-flex items-center gap-1">
+            <Star className="h-3.5 w-3.5 text-accent" fill="currentColor" aria-hidden="true" />
+            {vendor.noteMoyenne} ({vendor.nbAvis})
           </span>
         ) : (
           <span>Pas encore d&apos;avis</span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Check } from "lucide-react";
 
 import { Alert, Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -195,8 +196,9 @@ export function VendeurParametresView() {
             {geoStatus === "asking" ? "Localisation…" : "Utiliser ma position actuelle"}
           </Button>
           {user.lieuVente ? (
-            <span className="text-[12.5px] text-brand-subtle">
-              ✓ Lieu de vente enregistré{" "}
+            <span className="inline-flex items-center gap-1 text-[12.5px] text-brand-subtle">
+              <Check className="h-3.5 w-3.5" aria-hidden="true" />
+              Lieu de vente enregistré{" "}
               <button
                 type="button"
                 onClick={handleRemoveLocation}

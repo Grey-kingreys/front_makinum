@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 
 import { Alert } from "@/components/ui";
 import { ProductForm, type ProductFormPayload } from "@/components/products/ProductForm";
@@ -91,9 +92,10 @@ export function NouveauProduitForm() {
     <div className="mx-auto max-w-[640px] px-6 pb-[60px] pt-[28px] sm:px-8">
       <Link
         href="/vendeur/catalogue"
-        className="mb-5 inline-block text-[13.5px] text-brand-subtle hover:text-brand"
+        className="mb-5 inline-flex items-center gap-1.5 text-[13.5px] text-brand-subtle hover:text-brand"
       >
-        ← Mon catalogue
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+        Mon catalogue
       </Link>
       <h1 className="mb-1.5 font-display text-[27px] font-bold tracking-tight text-ink sm:text-[33px]">
         Publier un produit

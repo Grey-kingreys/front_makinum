@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ChangeEvent } from "react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Alert, ConfirmDialog } from "@/components/ui";
 import { ProductForm, type ProductFormPayload } from "@/components/products/ProductForm";
@@ -263,8 +264,12 @@ export function EditionProduitView({ productId }: EditionProduitViewProps) {
     return (
       <div className="mx-auto max-w-[760px] px-6 pb-[60px] pt-[28px] sm:px-8">
         <p className="mb-4 text-[14.5px] text-brand-subtle">Ce produit est introuvable.</p>
-        <Link href="/vendeur/catalogue" className="text-brand underline hover:text-accent-strong">
-          ← Retour à mon catalogue
+        <Link
+          href="/vendeur/catalogue"
+          className="inline-flex items-center gap-1.5 text-brand underline hover:text-accent-strong"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+          Retour à mon catalogue
         </Link>
       </div>
     );
@@ -285,9 +290,10 @@ export function EditionProduitView({ productId }: EditionProduitViewProps) {
     <div className="mx-auto max-w-[760px] px-6 pb-[60px] pt-[28px] sm:px-8">
       <Link
         href="/vendeur/catalogue"
-        className="mb-5 inline-block text-[13.5px] text-brand-subtle hover:text-brand"
+        className="mb-5 inline-flex items-center gap-1.5 text-[13.5px] text-brand-subtle hover:text-brand"
       >
-        ← Mon catalogue
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+        Mon catalogue
       </Link>
       <h1 className="mb-1.5 font-display text-[27px] font-bold tracking-tight text-ink sm:text-[33px]">
         Modifier mon produit
@@ -352,9 +358,9 @@ export function EditionProduitView({ productId }: EditionProduitViewProps) {
                     onClick={() => handleMovePhoto(photo.id, -1)}
                     disabled={index === 0 || reorderingId !== null}
                     aria-label={`Déplacer la photo ${index + 1} vers la gauche`}
-                    className="text-[13px] text-cream disabled:opacity-40"
+                    className="text-cream disabled:opacity-40"
                   >
-                    ←
+                    <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
@@ -370,9 +376,9 @@ export function EditionProduitView({ productId }: EditionProduitViewProps) {
                     onClick={() => handleMovePhoto(photo.id, 1)}
                     disabled={index === sortedPhotos.length - 1 || reorderingId !== null}
                     aria-label={`Déplacer la photo ${index + 1} vers la droite`}
-                    className="text-[13px] text-cream disabled:opacity-40"
+                    className="text-cream disabled:opacity-40"
                   >
-                    →
+                    <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
                 </div>
               </div>

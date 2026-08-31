@@ -303,7 +303,7 @@ describe("ProduitsView", () => {
     expect(card).not.toBeNull();
     expect(card).toHaveTextContent(normalizeSpaces(formatPrixGNF("185000")));
     expect(card).toHaveTextContent("0.8 km");
-    expect(card).toHaveTextContent("★ 4.6 (23)");
+    expect(card).toHaveTextContent("4.6 (23)");
   });
 
   // T38b : le backend n'exclut plus les produits publiés sans coordonnées —

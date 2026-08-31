@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ArrowLeft, Star } from "lucide-react";
 
 import { ProductCard } from "@/components/products/ProductCard";
 import { VendeurBadge } from "@/components/products/VendeurBadge";
@@ -30,8 +31,12 @@ export function VendeurDetail({ vendor }: { vendor: VendorDetailData }) {
 
   return (
     <div className="mx-auto max-w-[1280px] px-6 pb-[60px] pt-[26px] sm:px-8 lg:px-10">
-      <Link href="/vendeurs" className="mb-5 inline-block text-[13.5px] text-brand-subtle hover:text-brand">
-        ← Retour aux vendeurs
+      <Link
+        href="/vendeurs"
+        className="mb-5 inline-flex items-center gap-1.5 text-[13.5px] text-brand-subtle hover:text-brand"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+        Retour aux vendeurs
       </Link>
 
       <div className="mb-8 flex flex-col gap-6 rounded-[18px] border border-border bg-white p-[26px] sm:flex-row sm:items-center sm:justify-between">
@@ -48,8 +53,9 @@ export function VendeurDetail({ vendor }: { vendor: VendorDetailData }) {
             </div>
             <div className="flex flex-wrap items-center gap-3 text-[13.5px] text-brand-faint">
               {vendor.noteMoyenne !== null ? (
-                <span>
-                  ★ {vendor.noteMoyenne} ({vendor.nbAvis} avis)
+                <span className="inline-flex items-center gap-1">
+                  <Star className="h-3.5 w-3.5 text-accent" fill="currentColor" aria-hidden="true" />
+                  {vendor.noteMoyenne} ({vendor.nbAvis} avis)
                 </span>
               ) : (
                 <span>Pas encore d&apos;avis</span>

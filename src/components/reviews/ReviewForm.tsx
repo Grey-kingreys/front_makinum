@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Star } from "lucide-react";
 
 import { Alert } from "@/components/ui";
 import { ApiError } from "@/lib/api";
@@ -98,7 +99,7 @@ export function ReviewForm({ purchaseRequestId, onSubmitted, onAlreadyExists, on
                   }}
                   className="sr-only"
                 />
-                <span aria-hidden="true">★</span>
+                <Star className="h-5 w-5" fill={filled ? "currentColor" : "none"} aria-hidden="true" />
                 <span className="sr-only">
                   {value} étoile{value > 1 ? "s" : ""}
                 </span>

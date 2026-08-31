@@ -51,7 +51,7 @@ describe("VendeursView", () => {
     const link = await screen.findByRole("link", { name: /Fatoumata Bangoura/ });
     expect(link).toHaveAttribute("href", "/vendeurs/v1");
     expect(link).toHaveTextContent("vérifié");
-    expect(link).toHaveTextContent("★ 4.6 (23)");
+    expect(link).toHaveTextContent("4.6 (23)");
     expect(link).toHaveTextContent("5 produits actifs");
   });
 

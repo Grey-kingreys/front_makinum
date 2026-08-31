@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 export interface LegalTocEntry {
   /** Doit correspondre à l'`id` du <h2> de la section dans le contenu. */
@@ -46,7 +47,8 @@ export function LegalPageLayout({ title, lastUpdated, sommaire, children }: Lega
           href="/"
           className="inline-flex items-center gap-2 text-[13.5px] font-medium text-brand-subtle hover:text-brand-vivid"
         >
-          ← Retour à l&apos;accueil
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+          Retour à l&apos;accueil
         </Link>
 
         <header className="mt-8">

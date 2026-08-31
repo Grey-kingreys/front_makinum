@@ -1,5 +1,7 @@
 "use client";
 
+import { WifiOff } from "lucide-react";
+
 /**
  * Contenu interactif de /hors-ligne (T67①) — extrait de page.tsx pour
  * pouvoir déclencher `window.location.reload()` au clic (Server Components
@@ -18,22 +20,7 @@ export function HorsLigneView() {
         aria-hidden="true"
         className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-tint-danger text-danger"
       >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-7 w-7"
-        >
-          <line x1="2" y1="2" x2="22" y2="22" />
-          <path d="M8.5 16.5a5 5 0 0 1 7 0" />
-          <path d="M5 12.9a10 10 0 0 1 3.3-2.4" />
-          <path d="M10.7 5.5a10 10 0 0 1 8 3" />
-          <path d="M2 8.8a15 15 0 0 1 4.2-2.8" />
-          <line x1="12" y1="20" x2="12.01" y2="20" />
-        </svg>
+        <WifiOff className="h-7 w-7" />
       </span>
 
       <h1 className="mb-3 font-display text-[24px] font-bold text-ink">Pas de connexion</h1>

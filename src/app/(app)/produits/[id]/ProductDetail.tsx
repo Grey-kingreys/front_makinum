@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ArrowLeft, Star } from "lucide-react";
 
 import { Alert, ContactButtons } from "@/components/ui";
 import { PhotoPlaceholder } from "@/components/products/PhotoPlaceholder";
@@ -145,8 +146,12 @@ export function ProductDetail({ product }: { product: ProductView }) {
 
   return (
     <div className="mx-auto max-w-[1280px] px-6 pb-[60px] pt-[26px] sm:px-8 lg:px-10">
-      <Link href="/produits" className="mb-5 inline-block text-[13.5px] text-brand-subtle hover:text-brand">
-        ← Retour aux produits proches
+      <Link
+        href="/produits"
+        className="mb-5 inline-flex items-center gap-1.5 text-[13.5px] text-brand-subtle hover:text-brand"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+        Retour aux produits proches
       </Link>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.15fr_0.85fr]">
@@ -225,8 +230,9 @@ export function ProductDetail({ product }: { product: ProductView }) {
                   </div>
                   <div className="flex items-center gap-2 text-[13px] text-brand-faint">
                     {product.vendeur.noteMoyenne != null ? (
-                      <span>
-                        ★ {product.vendeur.noteMoyenne}
+                      <span className="inline-flex items-center gap-1">
+                        <Star className="h-3.5 w-3.5 text-accent" fill="currentColor" aria-hidden="true" />
+                        {product.vendeur.noteMoyenne}
                         {product.vendeur.nbAvis != null ? ` (${product.vendeur.nbAvis})` : ""}
                       </span>
                     ) : null}

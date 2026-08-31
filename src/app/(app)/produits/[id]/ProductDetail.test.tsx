@@ -202,7 +202,7 @@ describe("ProductDetail", () => {
       vendeur: { id: "v1", nom: "Fatoumata Bangoura", statutVendeur: "CONFIANCE", noteMoyenne: 4.6, nbAvis: 23 },
     });
     renderDetail(product);
-    expect(screen.getByText("★ 4.6 (23)")).toBeInTheDocument();
+    expect(screen.getByText("4.6 (23)")).toBeInTheDocument();
   });
 
   it("loads and renders the vendor reviews section for the product's vendeurId", async () => {

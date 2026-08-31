@@ -60,7 +60,7 @@ describe("VendeurDetail", () => {
     // Scoped to the identity header — the vendor's own product card below
     // also renders a VendeurBadge ("vérifié") in this fixture.
     expect(within(heading.parentElement as HTMLElement).getByText("vérifié")).toBeInTheDocument();
-    expect(screen.getByText("★ 4.6 (23 avis)")).toBeInTheDocument();
+    expect(screen.getByText("4.6 (23 avis)")).toBeInTheDocument();
   });
 
   it("renders the vendor's active products with ProductCard", () => {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { ArrowRight } from "lucide-react";
 
 import { Alert, Badge, Button, ConfirmDialog, type BadgeVariant } from "@/components/ui";
 import { formatDate } from "@/lib/format";
@@ -94,9 +95,7 @@ function ReportCard({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2 text-[14.5px] text-ink">
           <span className="font-medium">{report.signaleur.nom}</span>
-          <span className="text-brand-faint" aria-hidden="true">
-            →
-          </span>
+          <ArrowRight className="h-3.5 w-3.5 text-brand-faint" aria-hidden="true" />
           <span className="font-medium">{report.cible.nom}</span>
         </div>
         <Badge variant={STATUT_BADGE_VARIANT[report.statut]} dot>

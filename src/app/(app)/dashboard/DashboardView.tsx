@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Star } from "lucide-react";
 
 import { Badge } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
@@ -71,7 +72,7 @@ const ADMIN_ACTIONS: QuickAction[] = [
 
 interface StatTileProps {
   label: string;
-  value: string | number;
+  value: string | number | ReactNode;
   href: string;
   loading: boolean;
 }
@@ -261,10 +262,15 @@ export function DashboardView() {
   const activeProducts = products?.filter((product) => product.actif).length ?? 0;
   const inactiveProducts = products?.filter((product) => !product.actif).length ?? 0;
 
-  const noteMoyenneValue =
-    reviewResume?.noteMoyenne != null
-      ? `★ ${reviewResume.noteMoyenne} (${reviewResume.nbAvis})`
-      : "Aucun avis";
+  const noteMoyenneValue: ReactNode =
+    reviewResume?.noteMoyenne != null ? (
+      <span className="inline-flex items-center gap-1">
+        <Star className="h-[0.85em] w-[0.85em] text-accent" fill="currentColor" aria-hidden="true" />
+        {reviewResume.noteMoyenne} ({reviewResume.nbAvis})
+      </span>
+    ) : (
+      "Aucun avis"
+    );
 
   const actions: QuickAction[] = [
     ...BASE_ACTIONS,

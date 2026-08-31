@@ -144,7 +144,7 @@ describe("VendeurParametresView", () => {
     it("shows the saved-location confirmation without ever rendering raw coordinates", () => {
       renderView(makeUser({ lieuVente: { latitude: 9.6412, longitude: -13.5784 } }));
 
-      expect(screen.getByText("✓ Lieu de vente enregistré")).toBeInTheDocument();
+      expect(screen.getByText("Lieu de vente enregistré")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Retirer" })).toBeInTheDocument();
       expect(screen.queryByText(/9\.6412/)).not.toBeInTheDocument();
       expect(screen.queryByText(/-13\.5784/)).not.toBeInTheDocument();
@@ -153,7 +153,7 @@ describe("VendeurParametresView", () => {
     it("shows no saved-location confirmation when the account has no lieu de vente", () => {
       renderView(makeUser({ lieuVente: null }));
 
-      expect(screen.queryByText("✓ Lieu de vente enregistré")).not.toBeInTheDocument();
+      expect(screen.queryByText("Lieu de vente enregistré")).not.toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "Utiliser ma position actuelle" }),
       ).toBeInTheDocument();
@@ -219,7 +219,7 @@ describe("VendeurParametresView", () => {
 
       expect(await screen.findByText("Erreur serveur")).toBeInTheDocument();
       expect(refreshMock).not.toHaveBeenCalled();
-      expect(screen.queryByText("✓ Lieu de vente enregistré")).not.toBeInTheDocument();
+      expect(screen.queryByText("Lieu de vente enregistré")).not.toBeInTheDocument();
     });
   });
 });

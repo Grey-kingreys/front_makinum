@@ -123,7 +123,7 @@ describe("EditionProduitView", () => {
 
       expect(
         screen.queryByText(
-          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+          "Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
         ),
       ).not.toBeInTheDocument();
       expect(

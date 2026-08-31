@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Menu, X } from "lucide-react";
 
 import { Logo } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -92,17 +93,11 @@ export function LandingHeader() {
           onClick={() => setOpen((value) => !value)}
         >
           <span className="sr-only">Menu</span>
-          <svg
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            className="h-5 w-5"
-            aria-hidden="true"
-          >
-            {open ? <path d="M5 5l10 10M15 5L5 15" /> : <path d="M3 6h14M3 10h14M3 14h14" />}
-          </svg>
+          {open ? (
+            <X className="h-5 w-5" aria-hidden="true" />
+          ) : (
+            <Menu className="h-5 w-5" aria-hidden="true" />
+          )}
         </button>
       </div>
 

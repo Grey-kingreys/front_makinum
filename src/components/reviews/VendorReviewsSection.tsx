@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Star } from "lucide-react";
 
 import { Alert } from "@/components/ui";
 import { formatDate } from "@/lib/format";
@@ -87,12 +88,17 @@ export function VendorReviewsSection({ vendeurId }: VendorReviewsSectionProps) {
               <div className="mb-2 flex items-center justify-between gap-3">
                 <span className="text-[14px] font-medium text-ink">{review.auteur.nom}</span>
                 <span
-                  className="text-[13px] text-accent-strong"
+                  className="flex items-center gap-0.5 text-accent-strong"
                   aria-label={`${review.note} étoile${review.note > 1 ? "s" : ""} sur 5`}
                 >
-                  <span aria-hidden="true">
-                    {"★".repeat(review.note)}
-                    {"☆".repeat(5 - review.note)}
+                  <span className="flex items-center gap-0.5" aria-hidden="true">
+                    {Array.from({ length: 5 }, (_, index) => (
+                      <Star
+                        key={index}
+                        className="h-3.5 w-3.5"
+                        fill={index < review.note ? "currentColor" : "none"}
+                      />
+                    ))}
                   </span>
                 </span>
               </div>

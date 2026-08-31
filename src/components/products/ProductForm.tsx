@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { Check } from "lucide-react";
 
 import { Alert, Button, Input } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -314,10 +315,11 @@ export function ProductForm({
               : "Je suis sur mon lieu de vente — utiliser ma position"}
           </Button>
           {latitude !== null && longitude !== null ? (
-            <span className="text-[12.5px] text-brand-subtle">
+            <span className="inline-flex items-center gap-1 text-[12.5px] text-brand-subtle">
+              <Check className="h-3.5 w-3.5" aria-hidden="true" />
               {fromVendorLocation
-                ? "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit."
-                : "✓ Position enregistrée"}{" "}
+                ? "Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit."
+                : "Position enregistrée"}{" "}
               <button
                 type="button"
                 onClick={handleClearPosition}

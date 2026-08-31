@@ -239,7 +239,7 @@ describe("DashboardView", () => {
     expect(tileFor("Demandes reçues en attente")).toHaveTextContent("4");
     expect(tileFor("Demandes reçues en attente")).toHaveAttribute("href", "/vendeur/demandes");
 
-    expect(await screen.findByText("★ 4.5 (12)")).toBeInTheDocument();
+    expect(await screen.findByText("4.5 (12)")).toBeInTheDocument();
 
     expect(screen.getByRole("link", { name: "Mon catalogue" })).toHaveAttribute(
       "href",

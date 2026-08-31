@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { EllipsisVertical } from "lucide-react";
 
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/support";
 
@@ -45,10 +46,12 @@ export default function AidePage() {
               <div className="space-y-3 text-[15px] leading-[1.6] text-brand-subtle">
                 <p>
                   <strong>Android / Chrome</strong> : accepte l&apos;invitation « Installer Makinum » en haut de
-                  l&apos;écran, ou utilise le menu ⋮ (trois points) → « Ajouter à l&apos;écran d&apos;accueil ».
+                  l&apos;écran, ou utilise le menu{" "}
+                  <EllipsisVertical className="inline h-4 w-4 align-text-bottom" aria-hidden="true" /> (trois
+                  points) puis « Ajouter à l&apos;écran d&apos;accueil ».
                 </p>
                 <p>
-                  <strong>iPhone / Safari</strong> : appuie sur le bouton Partager (carré avec flèche) → « Sur
+                  <strong>iPhone / Safari</strong> : appuie sur le bouton Partager (carré avec flèche) puis « Sur
                   l&apos;écran d&apos;accueil ».
                 </p>
               </div>

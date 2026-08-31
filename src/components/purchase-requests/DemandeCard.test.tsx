@@ -130,7 +130,7 @@ describe("DemandeCard — avis (demande CLOTUREE)", () => {
         commentaire: "Impeccable",
       }),
     );
-    expect(await screen.findByText("Avis envoyé ★5")).toBeInTheDocument();
+    expect(await screen.findByText("Avis envoyé 5")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Laisser un avis" })).not.toBeInTheDocument();
   });
 

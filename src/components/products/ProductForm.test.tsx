@@ -75,7 +75,7 @@ describe("ProductForm", () => {
       "185 000",
     );
     expect(screen.getByLabelText("Catégorie")).toHaveValue("c2");
-    expect(screen.getByText("✓ Position enregistrée")).toBeInTheDocument();
+    expect(screen.getByText("Position enregistrée")).toBeInTheDocument();
     expect(screen.queryByText(/9\.6412/)).not.toBeInTheDocument();
     expect(screen.queryByText(/-13\.5784/)).not.toBeInTheDocument();
   });
@@ -207,7 +207,7 @@ describe("ProductForm", () => {
       screen.getByRole("button", { name: "Je suis sur mon lieu de vente — utiliser ma position" }),
     );
 
-    await waitFor(() => expect(screen.getByText("✓ Position enregistrée")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Position enregistrée")).toBeInTheDocument());
     expect(
       screen.queryByText(
         "Sans position, ton produit n'apparaîtra pas dans le tri par distance.",
@@ -223,7 +223,7 @@ describe("ProductForm", () => {
       initialValues: { latitude: 9.6412, longitude: -13.5784 },
     });
 
-    expect(screen.getByText("✓ Position enregistrée")).toBeInTheDocument();
+    expect(screen.getByText("Position enregistrée")).toBeInTheDocument();
     expect(
       screen.queryByText(
         "Sans position, ton produit n'apparaîtra pas dans le tri par distance.",
@@ -232,7 +232,7 @@ describe("ProductForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Retirer" }));
 
-    expect(screen.queryByText("✓ Position enregistrée")).not.toBeInTheDocument();
+    expect(screen.queryByText("Position enregistrée")).not.toBeInTheDocument();
     expect(
       screen.getByText(
         "Sans position, ton produit n'apparaîtra pas dans le tri par distance.",
@@ -258,7 +258,7 @@ describe("ProductForm", () => {
     await user.click(
       screen.getByRole("button", { name: "Je suis sur mon lieu de vente — utiliser ma position" }),
     );
-    await waitFor(() => expect(screen.getByText("✓ Position enregistrée")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Position enregistrée")).toBeInTheDocument());
 
     await user.click(screen.getByRole("button", { name: "Publier le produit" }));
 
@@ -279,10 +279,10 @@ describe("ProductForm", () => {
 
       expect(
         screen.getByText(
-          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+          "Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
         ),
       ).toBeInTheDocument();
-      expect(screen.queryByText("✓ Position enregistrée")).not.toBeInTheDocument();
+      expect(screen.queryByText("Position enregistrée")).not.toBeInTheDocument();
       expect(screen.queryByText(/9\.6412/)).not.toBeInTheDocument();
       expect(screen.queryByText(/-13\.5784/)).not.toBeInTheDocument();
     });
@@ -317,10 +317,10 @@ describe("ProductForm", () => {
 
       expect(
         screen.queryByText(
-          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+          "Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
         ),
       ).not.toBeInTheDocument();
-      expect(screen.queryByText("✓ Position enregistrée")).not.toBeInTheDocument();
+      expect(screen.queryByText("Position enregistrée")).not.toBeInTheDocument();
       expect(
         screen.getByText("Sans position, ton produit n'apparaîtra pas dans le tri par distance."),
       ).toBeInTheDocument();
@@ -334,15 +334,15 @@ describe("ProductForm", () => {
 
       // Position affichée = celle du produit (initialValues), pas celle du
       // compte : message standard, pas la mention lieu de vente.
-      expect(screen.getByText("✓ Position enregistrée")).toBeInTheDocument();
+      expect(screen.getByText("Position enregistrée")).toBeInTheDocument();
       expect(
         screen.queryByText(
-          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+          "Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
         ),
       ).not.toBeInTheDocument();
     });
 
-    it("switches to the standard « ✓ Position enregistrée » message once the vendor explicitly recaptures their position", async () => {
+    it("switches to the standard « Position enregistrée » message once the vendor explicitly recaptures their position", async () => {
       stubGeolocation((success) => {
         success({ coords: { latitude: 1.0, longitude: 2.0 } } as GeolocationPosition);
       });
@@ -351,7 +351,7 @@ describe("ProductForm", () => {
 
       expect(
         screen.getByText(
-          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+          "Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
         ),
       ).toBeInTheDocument();
 
@@ -359,10 +359,10 @@ describe("ProductForm", () => {
         screen.getByRole("button", { name: "Je suis sur mon lieu de vente — utiliser ma position" }),
       );
 
-      await waitFor(() => expect(screen.getByText("✓ Position enregistrée")).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText("Position enregistrée")).toBeInTheDocument());
       expect(
         screen.queryByText(
-          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+          "Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
         ),
       ).not.toBeInTheDocument();
     });
@@ -375,7 +375,7 @@ describe("ProductForm", () => {
 
       expect(
         screen.queryByText(
-          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+          "Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
         ),
       ).not.toBeInTheDocument();
       expect(

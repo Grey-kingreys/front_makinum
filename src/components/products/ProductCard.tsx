@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Star } from "lucide-react";
 
 import { formatPrixGNF } from "@/lib/format";
 import type { ProductSearchItem } from "@/lib/products/types";
@@ -72,8 +73,9 @@ export function ProductCard({
           <VendeurBadge statut={item.vendeur.statutVendeur} />
         </div>
         {hasNote ? (
-          <div className="text-[12.5px] text-brand-faint">
-            ★ {item.vendeur.noteMoyenne} ({item.vendeur.nbAvis})
+          <div className="flex items-center gap-1 text-[12.5px] text-brand-faint">
+            <Star className="h-3.5 w-3.5 text-accent" fill="currentColor" aria-hidden="true" />
+            {item.vendeur.noteMoyenne} ({item.vendeur.nbAvis})
           </div>
         ) : null}
       </div>

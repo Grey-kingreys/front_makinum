@@ -197,10 +197,10 @@ describe("NouveauProduitForm", () => {
 
       expect(
         screen.getByText(
-          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+          "Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
         ),
       ).toBeInTheDocument();
-      expect(screen.queryByText("✓ Position enregistrée")).not.toBeInTheDocument();
+      expect(screen.queryByText("Position enregistrée")).not.toBeInTheDocument();
       expect(screen.queryByText(/9\.6412/)).not.toBeInTheDocument();
       expect(screen.queryByText(/-13\.5784/)).not.toBeInTheDocument();
     });
@@ -236,10 +236,10 @@ describe("NouveauProduitForm", () => {
 
       expect(
         screen.queryByText(
-          "✓ Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
+          "Position de ton lieu de vente — tu peux la retirer ou la remplacer pour ce produit.",
         ),
       ).not.toBeInTheDocument();
-      expect(screen.queryByText("✓ Position enregistrée")).not.toBeInTheDocument();
+      expect(screen.queryByText("Position enregistrée")).not.toBeInTheDocument();
       expect(
         screen.getByText("Sans position, ton produit n'apparaîtra pas dans le tri par distance."),
       ).toBeInTheDocument();

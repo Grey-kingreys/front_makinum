@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 
 import { Alert } from "@/components/ui";
 import { DemandeCard } from "@/components/purchase-requests/DemandeCard";
@@ -77,8 +78,12 @@ export function DemandeDetailView({ demandeId }: DemandeDetailViewProps) {
     return (
       <div className="mx-auto max-w-[680px] px-6 pb-[60px] pt-[28px] sm:px-8">
         <p className="mb-4 text-[14.5px] text-brand-subtle">Cette demande est introuvable.</p>
-        <Link href="/demandes" className="text-brand underline hover:text-accent-strong">
-          ← Retour à mes demandes
+        <Link
+          href="/demandes"
+          className="inline-flex items-center gap-1.5 text-brand underline hover:text-accent-strong"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+          Retour à mes demandes
         </Link>
       </div>
     );
@@ -94,8 +99,12 @@ export function DemandeDetailView({ demandeId }: DemandeDetailViewProps) {
 
   return (
     <div className="mx-auto max-w-[680px] px-6 pb-[60px] pt-[28px] sm:px-8">
-      <Link href="/demandes" className="mb-5 inline-block text-[13.5px] text-brand-subtle hover:text-brand">
-        ← Retour à mes demandes
+      <Link
+        href="/demandes"
+        className="mb-5 inline-flex items-center gap-1.5 text-[13.5px] text-brand-subtle hover:text-brand"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+        Retour à mes demandes
       </Link>
       <h1 className="mb-5 font-display text-[27px] font-bold tracking-tight text-ink sm:text-[33px]">
         Ma demande d&apos;achat

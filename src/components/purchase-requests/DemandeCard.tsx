@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Star } from "lucide-react";
 
 import { Badge, ConfirmDialog, ContactButtons, Input, type BadgeVariant } from "@/components/ui";
 import { PhotoPlaceholder } from "@/components/products/PhotoPlaceholder";
@@ -361,8 +362,10 @@ export function DemandeCard({ demande, onChanged }: DemandeCardProps) {
       {isCloturee ? (
         submittedReview ? (
           <div className="flex items-center gap-2 border-t border-beige px-5 py-4">
-            <span className="text-[13.5px] font-medium text-brand-vivid">
-              Avis envoyé ★{submittedReview.note}
+            <span className="inline-flex items-center gap-1 text-[13.5px] font-medium text-brand-vivid">
+              Avis envoyé{" "}
+              <Star className="h-3.5 w-3.5 text-accent" fill="currentColor" aria-hidden="true" />
+              {submittedReview.note}
             </span>
           </div>
         ) : reviewAlreadyExists ? (

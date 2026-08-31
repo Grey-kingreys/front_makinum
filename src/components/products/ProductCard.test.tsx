@@ -39,7 +39,7 @@ describe("ProductCard", () => {
       "https://example.com/photo.jpg",
     );
     expect(screen.getByText("2.4 km")).toBeInTheDocument();
-    expect(screen.getByText("★ 4.5 (12)")).toBeInTheDocument();
+    expect(screen.getByText("4.5 (12)")).toBeInTheDocument();
   });
 
   it("replie sur le placeholder photo quand miniature est absente (undefined)", () => {
@@ -85,9 +85,9 @@ describe("ProductCard", () => {
         nbAvis: undefined as unknown as number,
       },
     };
-    render(<ProductCard item={item} />);
+    const { container } = render(<ProductCard item={item} />);
 
-    expect(screen.queryByText(/★/)).not.toBeInTheDocument();
+    expect(container.querySelector("svg")).not.toBeInTheDocument();
     expect(screen.queryByText("()")).not.toBeInTheDocument();
   });
 
@@ -96,9 +96,9 @@ describe("ProductCard", () => {
       ...BASE_ITEM,
       vendeur: { ...BASE_ITEM.vendeur, noteMoyenne: null },
     };
-    render(<ProductCard item={item} />);
+    const { container } = render(<ProductCard item={item} />);
 
-    expect(screen.queryByText(/★/)).not.toBeInTheDocument();
+    expect(container.querySelector("svg")).not.toBeInTheDocument();
   });
 
   it("masque le bloc note quand noteMoyenne est défini mais nbAvis est undefined", () => {
@@ -110,9 +110,9 @@ describe("ProductCard", () => {
         nbAvis: undefined as unknown as number,
       },
     };
-    render(<ProductCard item={item} />);
+    const { container } = render(<ProductCard item={item} />);
 
-    expect(screen.queryByText(/★/)).not.toBeInTheDocument();
+    expect(container.querySelector("svg")).not.toBeInTheDocument();
   });
 
   // T58 — défaut de showDistance inchangé : /produits et la fiche vendeur
