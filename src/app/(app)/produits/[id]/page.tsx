@@ -97,9 +97,48 @@ export async function generateMetadata({ params }: ProduitPageProps): Promise<Me
 }
 
 /**
+ * Champs `aggregateRating`/`review` du JSON-LD `Product` (T72b, Search
+ * Console signalait ces deux champs manquants). Renvoie un objet vide —
+ * jamais `aggregateRating`/`review` vides, ce que Google rejette — tant que
+ * `avisProduit` est absent (vues produit qui ne l'exposent pas) ou que le
+ * produit n'a aucun avis (`nbAvis === 0` implique `noteMoyenne === null` côté
+ * backend, mais on vérifie les deux par prudence côté client).
+ */
+function buildAvisJsonLd(avisProduit: ProductView["avisProduit"]) {
+  if (avisProduit === undefined || avisProduit.nbAvis === 0 || avisProduit.noteMoyenne === null) {
+    return {};
+  }
+
+  return {
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: avisProduit.noteMoyenne,
+      reviewCount: avisProduit.nbAvis,
+      bestRating: 5,
+      worstRating: 1,
+    },
+    review: avisProduit.items.map((item) => ({
+      "@type": "Review",
+      author: { "@type": "Person", name: item.auteur.nom },
+      // `dateCreation` est un horodatage ISO complet (`2026-08-01T00:00:00.000Z`) —
+      // `datePublished` n'attend qu'une date, on tronque à la partie avant le `T`.
+      datePublished: item.dateCreation.split("T")[0],
+      reviewRating: {
+        "@type": "Rating",
+        ratingValue: item.note,
+        bestRating: 5,
+        worstRating: 1,
+      },
+      ...(item.commentaire !== null ? { reviewBody: item.commentaire } : {}),
+    })),
+  };
+}
+
+/**
  * JSON-LD `Product` (schema.org) : prix/devise (GNF) en `offers`, vendeur en
- * `seller`. `JsonLd` (src/lib/seo/json-ld.tsx) échappe le JSON avant de
- * l'injecter en `<script>` — indispensable, un titre produit contenant
+ * `seller`, avis du produit en `aggregateRating`/`review` (T72b, voir
+ * `buildAvisJsonLd`). `JsonLd` (src/lib/seo/json-ld.tsx) échappe le JSON avant
+ * de l'injecter en `<script>` — indispensable, un titre produit contenant
  * `</script>` ne doit pas pouvoir casser la page.
  */
 function ProductJsonLd({ product }: { product: ProductView }) {
@@ -122,6 +161,7 @@ function ProductJsonLd({ product }: { product: ProductView }) {
       name: product.vendeur.nom,
       url: `${siteUrl}/vendeurs/${product.vendeurId}`,
     },
+    ...buildAvisJsonLd(product.avisProduit),
   };
 
   return <JsonLd data={data} />;

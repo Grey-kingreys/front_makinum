@@ -70,6 +70,37 @@ const SAMPLE_PRODUCT_WITH_PHOTO: ProductView = {
   ],
 };
 
+// T72b : avisProduit avec au moins un avis, dont un sans commentaire (pour
+// vérifier l'absence de reviewBody dans ce cas).
+const SAMPLE_PRODUCT_WITH_AVIS: ProductView = {
+  ...SAMPLE_PRODUCT,
+  avisProduit: {
+    noteMoyenne: 4.3,
+    nbAvis: 2,
+    items: [
+      {
+        note: 5,
+        commentaire: "Très bon produit, livraison rapide.",
+        dateCreation: "2026-08-20T10:15:00.000Z",
+        auteur: { nom: "Mariam Diallo" },
+      },
+      {
+        note: 4,
+        commentaire: null,
+        dateCreation: "2026-08-10T00:00:00.000Z",
+        auteur: { nom: "Ibrahima Sow" },
+      },
+    ],
+  },
+};
+
+// T72b : forme renvoyée par le backend quand le produit n'a aucun avis —
+// toujours présent mais vide (jamais aggregateRating/review vides côté JSON-LD).
+const SAMPLE_PRODUCT_NO_AVIS: ProductView = {
+  ...SAMPLE_PRODUCT,
+  avisProduit: { noteMoyenne: null, nbAvis: 0, items: [] },
+};
+
 describe("ProduitPage", () => {
   beforeEach(() => {
     getProductMock.mockReset();
@@ -131,6 +162,67 @@ describe("ProduitPage", () => {
     const data = JSON.parse(script?.textContent ?? "{}");
 
     expect(data.image).toBeUndefined();
+  });
+
+  it("includes aggregateRating and review in the JSON-LD when the product has avisProduit with reviews", async () => {
+    getProductMock.mockResolvedValueOnce(SAMPLE_PRODUCT_WITH_AVIS);
+
+    const ui = await ProduitPage({ params: Promise.resolve({ id: "p1" }) });
+    const { container } = render(<GeoProvider>{ui}</GeoProvider>);
+
+    const script = container.querySelector('script[type="application/ld+json"]');
+    const data = JSON.parse(script?.textContent ?? "{}");
+
+    expect(data.aggregateRating).toEqual({
+      "@type": "AggregateRating",
+      ratingValue: 4.3,
+      reviewCount: 2,
+      bestRating: 5,
+      worstRating: 1,
+    });
+    expect(data.review).toEqual([
+      {
+        "@type": "Review",
+        author: { "@type": "Person", name: "Mariam Diallo" },
+        datePublished: "2026-08-20",
+        reviewRating: { "@type": "Rating", ratingValue: 5, bestRating: 5, worstRating: 1 },
+        reviewBody: "Très bon produit, livraison rapide.",
+      },
+      {
+        "@type": "Review",
+        author: { "@type": "Person", name: "Ibrahima Sow" },
+        datePublished: "2026-08-10",
+        reviewRating: { "@type": "Rating", ratingValue: 4, bestRating: 5, worstRating: 1 },
+      },
+    ]);
+    // Le deuxième avis n'a pas de commentaire : pas de clé reviewBody du tout.
+    expect(data.review[1]).not.toHaveProperty("reviewBody");
+  });
+
+  it("omits aggregateRating and review when avisProduit has no reviews (nbAvis: 0)", async () => {
+    getProductMock.mockResolvedValueOnce(SAMPLE_PRODUCT_NO_AVIS);
+
+    const ui = await ProduitPage({ params: Promise.resolve({ id: "p1" }) });
+    const { container } = render(<GeoProvider>{ui}</GeoProvider>);
+
+    const script = container.querySelector('script[type="application/ld+json"]');
+    const data = JSON.parse(script?.textContent ?? "{}");
+
+    expect(data.aggregateRating).toBeUndefined();
+    expect(data.review).toBeUndefined();
+  });
+
+  it("omits aggregateRating and review without crashing when avisProduit is absent", async () => {
+    getProductMock.mockResolvedValueOnce(SAMPLE_PRODUCT);
+
+    const ui = await ProduitPage({ params: Promise.resolve({ id: "p1" }) });
+    const { container } = render(<GeoProvider>{ui}</GeoProvider>);
+
+    const script = container.querySelector('script[type="application/ld+json"]');
+    const data = JSON.parse(script?.textContent ?? "{}");
+
+    expect(data.aggregateRating).toBeUndefined();
+    expect(data.review).toBeUndefined();
   });
 });
 

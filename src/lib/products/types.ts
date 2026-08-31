@@ -36,6 +36,31 @@ export interface ProductVendeurView {
   nbAvis?: number;
 }
 
+/** Auteur d'un avis produit — mêmes champs que `ReviewAuteurView` côté backend. */
+export interface ProductAvisAuteurView {
+  nom: string;
+}
+
+/** Un avis lié à ce produit précisément (backend/src/products/products.types.ts, `ProductAvisItem`). */
+export interface ProductAvisItemView {
+  note: number;
+  commentaire: string | null;
+  dateCreation: string;
+  auteur: ProductAvisAuteurView;
+}
+
+/**
+ * Agrégat d'avis d'un produit (T72a, backend `ProductAvisResume`) — consommé
+ * par le JSON-LD `aggregateRating`/`review` de la fiche produit (T72b).
+ */
+export interface ProductAvisResumeView {
+  /** Moyenne arrondie à 0,1 ; `null` sans avis. */
+  noteMoyenne: number | null;
+  nbAvis: number;
+  /** Les avis les plus récents (3 au plus, dateCreation desc). */
+  items: ProductAvisItemView[];
+}
+
 export interface ProductView {
   id: string;
   titre: string;
@@ -52,6 +77,12 @@ export interface ProductView {
   categorie: ProductCategorieView;
   vendeur: ProductVendeurView;
   photos: ProductPhotoView[];
+  /**
+   * Optionnel : le backend le renvoie toujours sur `GET /products/:id`
+   * (T72a) mais il est absent des autres vues `ProductView` (catalogue
+   * vendeur…) qui partagent ce même type — se garder par présence à l'usage.
+   */
+  avisProduit?: ProductAvisResumeView;
 }
 
 export interface ProductSearchCategorieView {
